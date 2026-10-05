@@ -1,3 +1,4 @@
+
 # Component Dependency Map — J26-IT-453 Adaptive Learning Platform
 
 This document maps the architectural dependencies, service interfaces, and data flows among the four research components and the shared core platform.
