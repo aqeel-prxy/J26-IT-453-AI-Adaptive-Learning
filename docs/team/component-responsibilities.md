@@ -5,17 +5,19 @@ This document explicitly defines component ownership, software boundaries, datab
 ---
 
 ## 1. Aqeel M.I.M (IT23244016)
-- **Research Title**: *AI-Based Adaptive Mathematics Representation and Visualization*
-- **Component Branch**: `feature/aqeel-representation`
-- **Backend Code Location**: `backend/app/services/representation/`, `backend/app/api/representation.py`
-- **Mobile Code Location**: `mobile/lib/features/representation/`
-- **Database Tables Owned**: `representations`, `representation_outcomes`
-- **Key Service Interface**: `RepresentationService.select_representation()`, `RepresentationService.record_outcome()`
+- **Research Title**: *AI-Based Goal-Aware and Prerequisite-Adaptive Mathematics Learning Path Planning for Grade 11 Students*
+- **Component Branch**: `feature/aqeel-learning-path-planning`
+- **Backend Code Location**: `backend/app/services/learning_path/`, `backend/app/api/learning_path.py`
+- **Mobile Code Location**: `mobile/lib/features/learning_path/`
+- **Database Tables Owned**: `learning_path_plans`, `learning_path_decisions`
+- **Key Service Interface**: `LearningPathService.generate_path()`, `LearningPathService.revise_path()`, `LearningPathService.predict_readiness()`
 - **Core Deliverables**:
-  1. Multi-modal representation repository (text, diagram, graph, visual example, step-by-step).
-  2. Learner-aware dynamic representation selection algorithm.
-  3. Dynamic representation switching trigger on learner struggle.
-  4. Representation outcome telemetry and efficacy evaluation.
+  1. Grade 11 curriculum Directed Acyclic Graph (DAG) for Indices and Logarithms (primary) and Graphs (secondary).
+  2. Supervised machine-learning readiness prediction pipeline (comparing Logistic Regression baseline, Random Forest, and Gradient Boosting).
+  3. Goal-aware planning algorithm supporting Term-Test Preparation (time-bounded) and Comprehensive Learning modes.
+  4. Prerequisite-aware recommendation engine generating direct progression, prerequisite revision, worked example, or practice actions.
+  5. Dynamic pathway revision engine triggered on activity/quiz completion.
+  6. Empirical research evaluation comparing against Baseline 1 (Fixed Sequence) and Baseline 2 (Static Rule-Based Planning).
 
 ---
 
