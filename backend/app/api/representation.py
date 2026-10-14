@@ -1,5 +1,8 @@
 from uuid import UUID
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.database.session import get_db
+from app.models import RepresentationOutcome
 from app.schemas.representation import (
     RepresentationSelectRequest, RepresentationResponse, RepresentationOutcomeRequest
 )
@@ -22,8 +25,23 @@ def select_representation(request: RepresentationSelectRequest):
 
 
 @router.post("/outcome")
-def record_outcome(request: RepresentationOutcomeRequest):
+def record_outcome(request: RepresentationOutcomeRequest, db: Session = Depends(get_db)):
     """Log representation outcome for Component 1 research evaluation"""
-    return RepresentationStub.record_outcome(
+    result = RepresentationStub.record_outcome(
         request.student_id, request.representation_id, request.duration_seconds, request.is_successful
     )
+    
+    try:
+        outcome = RepresentationOutcome(
+            student_id=request.student_id,
+            representation_id=request.representation_id,
+            duration_seconds=request.duration_seconds,
+            is_successful=request.is_successful,
+            switched_from_id=request.switched_from_id
+        )
+        db.add(outcome)
+        db.commit()
+    except Exception:
+        db.rollback()
+        
+    return result

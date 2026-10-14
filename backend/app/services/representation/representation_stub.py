@@ -17,7 +17,7 @@ class RepresentationStub:
     @staticmethod
     def select_representation(student_id: UUID, concept_id: UUID) -> Dict[str, Any]:
         return {
-            "representation_id": "rep-44444444-4444-4444-4444-444444444444",
+            "representation_id": "44444444-4444-4444-4444-444444444444",
             "concept_id": str(concept_id),
             "format_type": "STEP_BY_STEP",
             "content_payload": {

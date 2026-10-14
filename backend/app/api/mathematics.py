@@ -1,6 +1,9 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID, uuid4
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.database.session import get_db
+from app.models import Attempt, ErrorDiagnosis, LearnerProfile, StudentEngagement
 from app.schemas.mathematics import (
     ConceptResponse, TopicCategoryResponse, AttemptSubmitRequest, AdaptiveAttemptResponse
 )
@@ -47,10 +50,10 @@ def get_concept(concept_id: UUID):
 
 
 @router.post("/attempts/submit", response_model=AdaptiveAttemptResponse)
-def submit_attempt(request: AttemptSubmitRequest):
+def submit_attempt(request: AttemptSubmitRequest, db: Session = Depends(get_db)):
     """
     Submits a student answer attempt.
-    Coordinates between component development stubs:
+    Coordinates between component development stubs and persists attempt state:
     - Component 4 Error Diagnosis
     - Component 2 Learner Profiling
     - Component 1 Representation Selection
@@ -72,6 +75,37 @@ def submit_attempt(request: AttemptSubmitRequest):
     
     # 4. Engagement & Feedback Stub (Component 3)
     eng = EngagementStub.process_activity_outcome(request.student_id, is_correct)
+    
+    # Attempt Persistence in Database
+    try:
+        new_attempt = Attempt(
+            id=attempt_id,
+            student_id=request.student_id,
+            question_id=request.question_id,
+            is_correct=is_correct,
+            student_solution=request.student_solution,
+            response_time_ms=request.response_time_ms,
+            attempt_number=1
+        )
+        db.add(new_attempt)
+        
+        # Persist error diagnosis if present
+        if not is_correct:
+            err_diag = ErrorDiagnosis(
+                attempt_id=attempt_id,
+                student_id=request.student_id,
+                question_id=request.question_id,
+                failed_step_index=diag.get("failed_step_index"),
+                error_category=diag.get("error_category", "Unclassified"),
+                explanation_text=diag.get("explanation_text", ""),
+                corrected_step=diag.get("corrected_solution_step")
+            )
+            db.add(err_diag)
+            
+        db.commit()
+    except Exception:
+        db.rollback()
+        # Fallback cleanly if database environment is unavailable
     
     return AdaptiveAttemptResponse(
         attempt_id=attempt_id,
