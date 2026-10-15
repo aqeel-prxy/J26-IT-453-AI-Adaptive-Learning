@@ -1,10 +1,11 @@
 {
   "status": "trained",
-  "selected_model": "RandomForest",
+  "selected_model": "LogisticRegression_Baseline",
   "train_samples": 259,
   "test_samples": 91,
   "train_unique_students": 37,
   "test_unique_students": 13,
+  "total_unique_students": 50,
   "feature_columns": [
     "concept_order_index",
     "prerequisite_avg_accuracy",
@@ -12,31 +13,326 @@
     "recent_attempt_count",
     "avg_response_time_ms"
   ],
+  "readiness_mastery_benchmark": 0.75,
+  "pedagogical_threshold_tuning": {
+    "optimal_decision_threshold": 0.75,
+    "youden_j_threshold": 0.7733,
+    "min_pedagogical_cost": 0.2088,
+    "cost_weights": {
+      "cost_fp_cognitive_overload": 3.0,
+      "cost_fn_redundant_review": 1.0
+    },
+    "default_classification_cutoff": 0.75
+  },
   "comparative_metrics": {
     "LogisticRegression_Baseline": {
-      "accuracy": 0.7033,
-      "precision": 0.8,
-      "recall": 0.8116,
-      "f1_score": 0.8058,
-      "roc_auc": 0.726,
-      "brier_score": 0.1753
+      "accuracy": 0.8571,
+      "precision": 0.925,
+      "recall": 0.9136,
+      "f1_score": 0.9193,
+      "roc_auc": 0.7864,
+      "brier_score": 0.0935
     },
     "RandomForest": {
-      "accuracy": 0.7473,
-      "precision": 0.8026,
-      "recall": 0.8841,
-      "f1_score": 0.8414,
-      "roc_auc": 0.72,
-      "brier_score": 0.1792
+      "accuracy": 0.8462,
+      "precision": 0.9241,
+      "recall": 0.9012,
+      "f1_score": 0.9125,
+      "roc_auc": 0.8136,
+      "brier_score": 0.1139
     },
     "GradientBoosting": {
-      "accuracy": 0.7473,
-      "precision": 0.8026,
-      "recall": 0.8841,
-      "f1_score": 0.8414,
-      "roc_auc": 0.6489,
-      "brier_score": 0.2094
+      "accuracy": 0.8352,
+      "precision": 0.9342,
+      "recall": 0.8765,
+      "f1_score": 0.9045,
+      "roc_auc": 0.7568,
+      "brier_score": 0.1302
     }
+  },
+  "cross_validation_5fold_ci95": {
+    "LogisticRegression_Baseline": {
+      "accuracy": {
+        "mean": 0.8657,
+        "std": 0.0531,
+        "ci_95": [
+          0.8192,
+          0.9122
+        ],
+        "fold_values": [
+          0.8857,
+          0.8857,
+          0.9,
+          0.7714,
+          0.8857
+        ]
+      },
+      "precision": {
+        "mean": 0.8973,
+        "std": 0.0603,
+        "ci_95": [
+          0.8444,
+          0.9502
+        ],
+        "fold_values": [
+          0.9107,
+          0.9385,
+          0.9333,
+          0.7917,
+          0.9123
+        ]
+      },
+      "recall": {
+        "mean": 0.9282,
+        "std": 0.0363,
+        "ci_95": [
+          0.8964,
+          0.9601
+        ],
+        "fold_values": [
+          0.9444,
+          0.9385,
+          0.9492,
+          0.8636,
+          0.9455
+        ]
+      },
+      "f1_score": {
+        "mean": 0.9123,
+        "std": 0.0486,
+        "ci_95": [
+          0.8697,
+          0.9549
+        ],
+        "fold_values": [
+          0.9273,
+          0.9385,
+          0.9412,
+          0.8261,
+          0.9286
+        ]
+      },
+      "roc_auc": {
+        "mean": 0.8476,
+        "std": 0.0184,
+        "ci_95": [
+          0.8314,
+          0.8637
+        ],
+        "fold_values": [
+          0.8519,
+          0.8554,
+          0.8213,
+          0.8392,
+          0.8703
+        ]
+      },
+      "brier_score": {
+        "mean": 0.1043,
+        "std": 0.0354,
+        "ci_95": [
+          0.0732,
+          0.1353
+        ],
+        "fold_values": [
+          0.0965,
+          0.0775,
+          0.0933,
+          0.1663,
+          0.0878
+        ]
+      }
+    },
+    "RandomForest": {
+      "accuracy": {
+        "mean": 0.8686,
+        "std": 0.0383,
+        "ci_95": [
+          0.835,
+          0.9022
+        ],
+        "fold_values": [
+          0.8857,
+          0.8857,
+          0.8857,
+          0.8,
+          0.8857
+        ]
+      },
+      "precision": {
+        "mean": 0.9042,
+        "std": 0.0447,
+        "ci_95": [
+          0.8649,
+          0.9434
+        ],
+        "fold_values": [
+          0.9259,
+          0.9385,
+          0.918,
+          0.8261,
+          0.9123
+        ]
+      },
+      "recall": {
+        "mean": 0.9245,
+        "std": 0.0352,
+        "ci_95": [
+          0.8937,
+          0.9554
+        ],
+        "fold_values": [
+          0.9259,
+          0.9385,
+          0.9492,
+          0.8636,
+          0.9455
+        ]
+      },
+      "f1_score": {
+        "mean": 0.9141,
+        "std": 0.0393,
+        "ci_95": [
+          0.8797,
+          0.9486
+        ],
+        "fold_values": [
+          0.9259,
+          0.9385,
+          0.9333,
+          0.8444,
+          0.9286
+        ]
+      },
+      "roc_auc": {
+        "mean": 0.8215,
+        "std": 0.0563,
+        "ci_95": [
+          0.7721,
+          0.8709
+        ],
+        "fold_values": [
+          0.8947,
+          0.7662,
+          0.8012,
+          0.7788,
+          0.8667
+        ]
+      },
+      "brier_score": {
+        "mean": 0.1092,
+        "std": 0.0355,
+        "ci_95": [
+          0.0781,
+          0.1402
+        ],
+        "fold_values": [
+          0.0975,
+          0.0922,
+          0.0907,
+          0.1724,
+          0.093
+        ]
+      }
+    },
+    "GradientBoosting": {
+      "accuracy": {
+        "mean": 0.84,
+        "std": 0.0557,
+        "ci_95": [
+          0.7912,
+          0.8888
+        ],
+        "fold_values": [
+          0.8571,
+          0.8857,
+          0.8571,
+          0.7429,
+          0.8571
+        ]
+      },
+      "precision": {
+        "mean": 0.8853,
+        "std": 0.0659,
+        "ci_95": [
+          0.8276,
+          0.943
+        ],
+        "fold_values": [
+          0.8929,
+          0.9524,
+          0.9298,
+          0.7826,
+          0.8689
+        ]
+      },
+      "recall": {
+        "mean": 0.9058,
+        "std": 0.0543,
+        "ci_95": [
+          0.8583,
+          0.9534
+        ],
+        "fold_values": [
+          0.9259,
+          0.9231,
+          0.8983,
+          0.8182,
+          0.9636
+        ]
+      },
+      "f1_score": {
+        "mean": 0.8948,
+        "std": 0.0542,
+        "ci_95": [
+          0.8474,
+          0.9423
+        ],
+        "fold_values": [
+          0.9091,
+          0.9375,
+          0.9138,
+          0.8,
+          0.9138
+        ]
+      },
+      "roc_auc": {
+        "mean": 0.7934,
+        "std": 0.0849,
+        "ci_95": [
+          0.719,
+          0.8678
+        ],
+        "fold_values": [
+          0.8796,
+          0.6754,
+          0.7928,
+          0.7509,
+          0.8685
+        ]
+      },
+      "brier_score": {
+        "mean": 0.1259,
+        "std": 0.0389,
+        "ci_95": [
+          0.0918,
+          0.1601
+        ],
+        "fold_values": [
+          0.1153,
+          0.1079,
+          0.1055,
+          0.1952,
+          0.1059
+        ]
+      }
+    }
+  },
+  "statistical_significance": {
+    "comparison": "RandomForest vs LogisticRegression (Paired t-test on F1)",
+    "t_statistic": 0.4113,
+    "p_value": 0.7019,
+    "statistically_significant_at_005": false
   },
   "model_path": "C:\\Users\\DELL\\Desktop\\J26-IT-453-AI-Adaptive-Learning\\backend\\app\\services\\learning_path\\artifacts\\readiness_model.pkl"
 }

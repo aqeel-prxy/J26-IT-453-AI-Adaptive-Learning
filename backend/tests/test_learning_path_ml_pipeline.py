@@ -16,7 +16,7 @@ from app.services.learning_path.data_pipeline import (
     FEATURE_COLUMNS, TARGET_COLUMN
 )
 from app.services.learning_path.readiness_model import (
-    ReadinessModelTrainer, MODEL_PATH, METRICS_PATH
+    ReadinessModelTrainer, optimize_pedagogical_threshold, MODEL_PATH, METRICS_PATH
 )
 from app.services.learning_path.readiness_predictor import ReadinessPredictor
 
@@ -142,3 +142,54 @@ def test_predictor_fallback_when_model_file_missing():
 
     assert 0.0 <= result["readiness_probability"] <= 1.0
     assert "Fallback" in result["model_version"]
+
+
+def test_group_kfold_cross_validation_ci95():
+    """Verify that 5-fold GroupKFold CV enforces zero student leakage and computes 95% CIs."""
+    df = generate_development_dataset(num_students=30, random_seed=77)
+    trainer = ReadinessModelTrainer(random_seed=77)
+    cv_summary = trainer.evaluate_group_kfold(df, n_splits=5)
+
+    assert cv_summary["num_splits"] == 5
+    assert cv_summary["total_students"] == 30
+
+    for model_name, metrics in cv_summary["cv_metrics"].items():
+        f1_info = metrics["f1_score"]
+        assert "mean" in f1_info and "std" in f1_info and "ci_95" in f1_info
+        ci_low, ci_high = f1_info["ci_95"]
+        assert ci_low <= f1_info["mean"] <= ci_high
+        assert len(f1_info["fold_values"]) == 5
+
+
+def test_pedagogical_threshold_tuning():
+    """Verify that pedagogical threshold optimizer penalizes cognitive overload (FP) 3x more than review (FN)."""
+    import numpy as np
+    y_true = np.array([0, 0, 1, 1, 1, 0, 1, 0, 1, 1])
+    y_proba = np.array([0.2, 0.4, 0.65, 0.8, 0.9, 0.55, 0.7, 0.3, 0.85, 0.95])
+
+    tuning = optimize_pedagogical_threshold(y_true, y_proba, cost_fp=3.0, cost_fn=1.0)
+    assert 0.10 <= tuning["optimal_decision_threshold"] <= 0.90
+    assert tuning["cost_weights"]["cost_fp_cognitive_overload"] == 3.0
+    assert "youden_j_threshold" in tuning
+
+
+def test_c2_mastery_vector_integration():
+    """Verify that predictor seamlessly ingests Component 2 latent mastery signals."""
+    predictor = ReadinessPredictor(model_path=MODEL_PATH)
+
+    result = predictor.predict_readiness(
+        student_id="student-c2-test",
+        concept_id="10000000-0000-0000-0000-000000000003",
+        concept_order_index=3,
+        prerequisite_avg_accuracy=0.82,
+        past_overall_accuracy=0.80,
+        c2_mastery_probability=0.91,
+        c2_prerequisite_mastery_mean=0.89
+    )
+
+    assert result["component2_mastery_integrated"] is True
+    assert result["features_used"]["c2_mastery_probability"] == 0.91
+    assert result["features_used"]["c2_prerequisite_mastery_mean"] == 0.89
+    assert "cost_sensitive_optimization" in result
+    assert "decision_threshold_applied" in result
+

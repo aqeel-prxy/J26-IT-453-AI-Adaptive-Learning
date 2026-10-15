@@ -55,6 +55,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final recConceptId = rec['concept_id'] as String? ?? '10000000-0000-0000-0000-000000000002';
     final goalType = _activePlan?['goal_type'] as String? ?? 'TERM_TEST';
     final readinessScore = (_activePlan?['overall_readiness_score'] as num?)?.toDouble() ?? 0.74;
+    final gradeLevel = _activePlan?['grade_level'] as int? ?? 11;
+    final topicCategory = _activePlan?['topic_category'] as String? ?? 'Indices and Logarithms';
+    final isG10 = gradeLevel == 10 || topicCategory.toLowerCase().contains('quad');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -78,7 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800),
                 ),
                 Text(
-                  'Grade 11 Mathematics • Rural LK',
+                  'Grade $gradeLevel Mathematics • Rural LK',
                   style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.textSecondary),
                 ),
               ],
@@ -134,6 +137,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 recRationale: recRationale,
                 conceptId: recConceptId,
                 readinessScore: readinessScore,
+                gradeLevel: gradeLevel,
+                topicCategory: topicCategory,
+                isG10: isG10,
               ),
               const SizedBox(height: 18),
 
@@ -154,8 +160,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pushNamed(context, AppRouter.topics),
-                    child: const Text('View All (3)'),
+                    onPressed: () => Navigator.pushNamed(context, AppRouter.learningGoal).then((_) => _fetchDashboardState()),
+                    child: const Text('Change Grade / Goal'),
                   ),
                 ],
               ),
@@ -165,11 +171,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 title: 'Indices & Logarithms',
                 grade: 'Grade 11',
                 conceptsCount: 7,
-                badge: 'AI Prerequisite DAG Active',
+                badge: isG10 ? 'Available in G11' : 'Active Prerequisite DAG',
                 badgeColor: AppTheme.primaryBlue,
                 icon: Icons.functions,
-                isHighlighted: true,
-                onTap: () => Navigator.pushNamed(context, AppRouter.learningPath),
+                isHighlighted: !isG10,
+                onTap: () async {
+                  await _service.createPlan(
+                    studentId: LearningPathService.demoStudentId,
+                    topicCategory: "Indices and Logarithms",
+                    gradeLevel: 11,
+                    goalType: goalType,
+                  );
+                  if (mounted) {
+                    Navigator.pushNamed(context, AppRouter.learningPath).then((_) => _fetchDashboardState());
+                  }
+                },
               ),
               const SizedBox(height: 12),
 
@@ -177,11 +193,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 title: 'Quadratic Equations',
                 grade: 'Grade 10',
                 conceptsCount: 4,
-                badge: 'Error Diagnosis Enabled',
+                badge: isG10 ? 'Active Prerequisite DAG' : 'Available in G10',
                 badgeColor: AppTheme.accentTeal,
                 icon: Icons.linear_scale,
-                isHighlighted: false,
-                onTap: () => Navigator.pushNamed(context, AppRouter.concept),
+                isHighlighted: isG10,
+                onTap: () async {
+                  await _service.createPlan(
+                    studentId: LearningPathService.demoStudentId,
+                    topicCategory: "Quadratic Equations",
+                    gradeLevel: 10,
+                    goalType: goalType,
+                  );
+                  if (mounted) {
+                    Navigator.pushNamed(context, AppRouter.learningPath).then((_) => _fetchDashboardState());
+                  }
+                },
               ),
               const SizedBox(height: 12),
 
@@ -242,6 +268,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String recRationale,
     required String conceptId,
     required double readinessScore,
+    required int gradeLevel,
+    required String topicCategory,
+    required bool isG10,
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -270,10 +299,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.auto_awesome, color: AppTheme.accentTeal, size: 14),
+                    const Icon(Icons.school, color: AppTheme.accentTeal, size: 14),
                     const SizedBox(width: 6),
                     Text(
-                      'AI Learning Path Engine (Aqeel)',
+                      'Grade $gradeLevel • ${isG10 ? "Quadratic Equations" : "Indices & Logarithms"}',
                       style: GoogleFonts.plusJakartaSans(
                         color: Colors.white,
                         fontSize: 11,
@@ -411,13 +440,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: const BorderSide(color: Colors.white38),
-                  minimumSize: const Size(90, 44),
+                  minimumSize: const Size(80, 44),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text(
                   'Full DAG',
                   style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Configure Grade & Goal',
+                icon: const Icon(Icons.tune, color: Colors.white, size: 20),
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRouter.learningGoal).then((_) => _fetchDashboardState());
+                },
               ),
             ],
           ),

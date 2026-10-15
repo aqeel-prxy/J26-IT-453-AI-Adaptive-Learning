@@ -88,7 +88,19 @@ class TopicsScreen extends StatelessWidget {
             ),
             child: InkWell(
               onTap: () {
-                Navigator.pushNamed(context, item['route'] as String);
+                if (item['title'] == 'Quadratic Equations') {
+                  Navigator.pushNamed(context, AppRouter.learningGoal, arguments: {
+                    'grade': 10,
+                    'topic': 'Quadratic Equations',
+                  });
+                } else if (item['title'] == 'Indices and Logarithms') {
+                  Navigator.pushNamed(context, AppRouter.learningGoal, arguments: {
+                    'grade': 11,
+                    'topic': 'Indices and Logarithms',
+                  });
+                } else {
+                  Navigator.pushNamed(context, item['route'] as String);
+                }
               },
               borderRadius: BorderRadius.circular(18),
               child: Padding(

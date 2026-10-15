@@ -35,7 +35,13 @@ class AppRouter {
       case dashboard:
         return MaterialPageRoute(builder: (_) => const DashboardScreen());
       case learningGoal:
-        return MaterialPageRoute(builder: (_) => const LearningGoalScreen());
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (_) => LearningGoalScreen(
+            initialGrade: args?['grade'] as int?,
+            initialTopic: args?['topic'] as String?,
+          ),
+        );
       case learningPath:
         return MaterialPageRoute(builder: (_) => const LearningPathScreen());
       case diagnostic:

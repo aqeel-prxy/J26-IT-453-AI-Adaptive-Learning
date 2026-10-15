@@ -288,3 +288,80 @@ INDICES_LOGARITHMS_DAG.add_concept(ConceptNode(
     textbook_ref="Grade 11 Mathematics Part I, Chapter 4, Section 4.4",
     is_terminal_objective=True
 ))
+
+
+# ==============================================================================
+# AUTHORITATIVE CURRICULUM DEFINITION: Sri Lankan Grade 10 Mathematics
+# Topic: Quadratic Equations (වර්ගජ සමීකරණ)
+# Reference: Ministry of Education Sri Lanka, Grade 10 Mathematics Textbook, Part I
+# ==============================================================================
+
+QUADRATIC_EQUATIONS_DAG = CurriculumDAG(
+    topic_name="Quadratic Equations",
+    grade_level=10
+)
+
+# 1. Solving Quadratic Equations by Factorization
+QUADRATIC_EQUATIONS_DAG.add_concept(ConceptNode(
+    id="c1111111-1111-1111-1111-111111111111",
+    code="MATH-G10-QUAD-01",
+    title="Solving Quadratic Equations by Factorization",
+    description="Applying the Zero-Product Principle (if A * B = 0 then A = 0 or B = 0) to solve standard quadratic equations (x - p)(x - q) = 0.",
+    grade_level=10,
+    topic="Quadratic Equations",
+    prerequisites=[],
+    order_index=1,
+    textbook_ref="Grade 10 Mathematics Part I, Chapter 11, Section 11.1",
+    is_terminal_objective=False
+))
+
+# 2. Factoring and Solving by Splitting Middle Term
+QUADRATIC_EQUATIONS_DAG.add_concept(ConceptNode(
+    id="c1111111-1111-1111-1111-111111111002",
+    code="MATH-G10-QUAD-02",
+    title="Factoring and Solving by Splitting Middle Term",
+    description="Factoring quadratic expressions ax^2 + bx + c by finding p, q such that p + q = b and p * q = ac.",
+    grade_level=10,
+    topic="Quadratic Equations",
+    prerequisites=["c1111111-1111-1111-1111-111111111111"],
+    order_index=2,
+    textbook_ref="Grade 10 Mathematics Part I, Chapter 11, Section 11.2",
+    is_terminal_objective=False
+))
+
+# 3. Solving Quadratic Equations by Completing the Square
+QUADRATIC_EQUATIONS_DAG.add_concept(ConceptNode(
+    id="c1111111-1111-1111-1111-111111111003",
+    code="MATH-G10-QUAD-03",
+    title="Solving by Completing the Square",
+    description="Transforming ax^2 + bx + c = 0 into a perfect square format (x + b/2)^2 = d and extracting roots.",
+    grade_level=10,
+    topic="Quadratic Equations",
+    prerequisites=["c1111111-1111-1111-1111-111111111002"],
+    order_index=3,
+    textbook_ref="Grade 10 Mathematics Part I, Chapter 11, Section 11.3",
+    is_terminal_objective=False
+))
+
+# 4. The Quadratic Formula & Practical Applications
+QUADRATIC_EQUATIONS_DAG.add_concept(ConceptNode(
+    id="c1111111-1111-1111-1111-111111111004",
+    code="MATH-G10-QUAD-04",
+    title="The Quadratic Formula & Word Problems",
+    description="Deriving and applying the general quadratic formula x = (-b +- sqrt(b^2 - 4ac)) / (2a) to solve geometric area and word problems.",
+    grade_level=10,
+    topic="Quadratic Equations",
+    prerequisites=["c1111111-1111-1111-1111-111111111003"],
+    order_index=4,
+    textbook_ref="Grade 10 Mathematics Part I, Chapter 11, Section 11.4",
+    is_terminal_objective=True
+))
+
+
+def get_curriculum_dag(topic_name: str = "Indices and Logarithms", grade_level: int = 11) -> CurriculumDAG:
+    """Retrieves the authoritative CurriculumDAG instance based on grade level or topic."""
+    clean = (topic_name or "").lower()
+    if grade_level == 10 or "quad" in clean:
+        return QUADRATIC_EQUATIONS_DAG
+    return INDICES_LOGARITHMS_DAG
+
