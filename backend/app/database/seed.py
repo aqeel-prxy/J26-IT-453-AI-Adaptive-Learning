@@ -5,8 +5,11 @@ from sqlalchemy.orm import Session
 from app.database.session import SessionLocal, engine
 from app.database.base import Base
 from app.models import (
-    Student, Concept, Question, Representation, LearnerProfile, StudentEngagement
+    Student, Concept, Question, Representation, LearnerProfile, StudentEngagement,
+    LearningPathPlan, LearningPathDecision
 )
+from app.services.learning_path.curriculum_graph import INDICES_LOGARITHMS_DAG
+from app.services.learning_path.planner_service import LearningPathService
 
 
 def seed_database(db: Session):
@@ -15,7 +18,7 @@ def seed_database(db: Session):
     if db.query(Concept).first() is not None:
         return
 
-    # 1. Create Grade 10-11 Math Concepts
+    # 1. Create Grade 10 Math Concepts
     quad_concept = Concept(
         id=uuid.UUID("c1111111-1111-1111-1111-111111111111"),
         topic_category="Quadratic Equations",
@@ -33,17 +36,23 @@ def seed_database(db: Session):
         prerequisite_concept_ids=[],
         grade_level=10
     )
+
+    concept_objs = [quad_concept, perim_concept]
+
+    # Seed all Grade 11 Indices and Logarithms concepts from DAG
+    for node in INDICES_LOGARITHMS_DAG.nodes.values():
+        c_obj = Concept(
+            id=uuid.UUID(node.id),
+            topic_category=node.topic,
+            code=node.code,
+            title=node.title,
+            prerequisite_concept_ids=[str(pid) for pid in node.prerequisites],
+            grade_level=node.grade_level
+        )
+        concept_objs.append(c_obj)
+
     
-    indices_concept = Concept(
-        id=uuid.UUID("c3333333-3333-3333-3333-333333333333"),
-        topic_category="Indices and Logarithms",
-        code="MATH-G11-IND-01",
-        title="Laws of Indices and Exponential Functions",
-        prerequisite_concept_ids=[],
-        grade_level=11
-    )
-    
-    db.add_all([quad_concept, perim_concept, indices_concept])
+    db.add_all(concept_objs)
     db.commit()
 
     # 2. Create Canonical Math Question
@@ -65,7 +74,7 @@ def seed_database(db: Session):
     db.add(quad_question)
     db.commit()
 
-    # 3. Create Multi-Modal Representations (Component 1)
+    # 3. Create Multi-Modal Representations (Component 1 backwards compatibility)
     rep_step = Representation(
         id=uuid.UUID("44444444-4444-4444-4444-444444444444"),
         concept_id=quad_concept.id,
@@ -104,6 +113,7 @@ def seed_database(db: Session):
         hashed_password=hashed_pwd,
         grade_level=10
     )
+
     db.add(demo_student)
     db.commit()
 
@@ -125,6 +135,17 @@ def seed_database(db: Session):
     db.add_all([profile, engagement])
     db.commit()
 
+    # 6. Seed Component 1 (Aqeel) Initial Adaptive Learning Pathway
+    planner = LearningPathService()
+    planner.generate_path(
+        student_id=str(demo_student.id),
+        topic_category="Indices and Logarithms",
+        goal_type="TERM_TEST",
+        available_daily_minutes=30,
+        known_mastery={"10000000-0000-0000-0000-000000000001": 0.88},
+        db=db
+    )
+
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)
@@ -134,3 +155,4 @@ if __name__ == "__main__":
         print("Database seed completed successfully.")
     finally:
         session.close()
+

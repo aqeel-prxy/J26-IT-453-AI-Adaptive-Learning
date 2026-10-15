@@ -3,9 +3,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
+db_uri = settings.SQLALCHEMY_DATABASE_URI
+connect_args = {}
+if db_uri.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
 # Create SQLAlchemy engine
 engine = create_engine(
-    settings.SQLALCHEMY_DATABASE_URI,
+    db_uri,
+    connect_args=connect_args,
     pool_pre_ping=True,
     echo=False
 )

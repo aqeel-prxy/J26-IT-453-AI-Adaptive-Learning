@@ -44,8 +44,11 @@ def setup_test_database():
     db = TestingSessionLocal()
     seed_database(db)
     db.close()
+    app.dependency_overrides[get_db] = override_get_db
     yield
+    app.dependency_overrides.pop(get_db, None)
     Base.metadata.drop_all(bind=engine)
+
 
 
 def test_complete_end_to_end_adaptive_learning_flow():

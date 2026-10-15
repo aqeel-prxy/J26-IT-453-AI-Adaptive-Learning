@@ -14,7 +14,7 @@ class AdaptiveLearningApp extends StatelessWidget {
     return MaterialApp(
       title: 'J26-IT-453 Adaptive Learning',
       theme: AppTheme.lightTheme,
-      initialRoute: AppRouter.login,
+      initialRoute: AppRouter.splash,
       onGenerateRoute: AppRouter.generateRoute,
       debugShowCheckedModeBanner: false,
     );
