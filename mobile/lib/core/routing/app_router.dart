@@ -11,11 +11,13 @@ import '../../features/mathematics/topics_screen.dart';
 import '../../features/mathematics/concept_screen.dart';
 import '../../features/mathematics/question_screen.dart';
 import '../../features/mathematics/answer_submission_screen.dart';
+import '../../features/profile/profile_screen.dart';
 
 class AppRouter {
   static const String splash = '/';
   static const String login = '/login';
   static const String dashboard = '/dashboard';
+  static const String profile = '/profile';
   static const String learningGoal = '/learning-goal';
   static const String learningPath = '/learning-path';
   static const String diagnostic = '/diagnostic';
@@ -34,6 +36,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const LoginScreen());
       case dashboard:
         return MaterialPageRoute(builder: (_) => const DashboardScreen());
+      case profile:
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
       case learningGoal:
         return MaterialPageRoute(builder: (_) => const LearningGoalScreen());
       case learningPath:

@@ -30,8 +30,11 @@ class ApiEndpoints {
   // Learner Profiling (Component 2)
   static const String learnerProfile = "$baseUrl/learner/profile";
 
-  // Engagement (Component 3)
+  // Engagement & Feedback (Component 3: Dharmasena K.C.D)
+  static const String studentProfile = "$baseUrl/students/profile";
   static const String engagementDashboard = "$baseUrl/engagement/dashboard";
+  static const String engagementFeedback = "$baseUrl/engagement/profile-feedback";
+  static const String engagementEvaluateTelemetry = "$baseUrl/engagement/telemetry/evaluate";
 
   // Error Diagnosis (Component 4)
   static const String diagnoseError = "$baseUrl/error/diagnose";

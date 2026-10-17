@@ -43,6 +43,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Navigator.pushNamed(context, AppRouter.diagnostic).then((_) => _fetchDashboardState());
     } else if (index == 3) {
       Navigator.pushNamed(context, AppRouter.telemetry);
+    } else if (index == 4) {
+      Navigator.pushNamed(context, AppRouter.profile).then((_) {
+        if (mounted) setState(() => _currentNavIndex = 0);
+        _fetchDashboardState();
+      });
     }
   }
 
@@ -111,6 +116,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(width: 8),
+
+          // Profile & AI Feedback button
+          IconButton(
+            tooltip: 'Profile & AI Feedback',
+            icon: const CircleAvatar(
+              radius: 14,
+              backgroundColor: AppTheme.primaryLight,
+              child: Text('🦊', style: TextStyle(fontSize: 15)),
+            ),
+            onPressed: () => Navigator.pushNamed(context, AppRouter.profile).then((_) => _fetchDashboardState()),
+          ),
+          const SizedBox(width: 4),
 
           IconButton(
             tooltip: 'Logout',
@@ -229,6 +246,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.analytics_outlined),
             selectedIcon: Icon(Icons.analytics),
             label: 'Telemetry',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
       ),
@@ -427,25 +449,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildVirtualPetCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+    return InkWell(
+      onTap: () => Navigator.pushNamed(context, AppRouter.profile).then((_) => _fetchDashboardState()),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF0D9488), Color(0xFF14B8A6)],
               ),
@@ -511,8 +536,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTopicCard({
     required String title,
