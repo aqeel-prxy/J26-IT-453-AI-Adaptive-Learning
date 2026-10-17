@@ -65,6 +65,7 @@ class UserProfile {
     String? district,
     String? avatarId,
     String? customAvatarUrl,
+    bool clearCustomAvatar = false,
     String? motivationalArchetype,
     String? preferredGoal,
   }) {
@@ -77,7 +78,7 @@ class UserProfile {
       school: school ?? this.school,
       district: district ?? this.district,
       avatarId: avatarId ?? this.avatarId,
-      customAvatarUrl: customAvatarUrl ?? this.customAvatarUrl,
+      customAvatarUrl: clearCustomAvatar ? null : (customAvatarUrl ?? this.customAvatarUrl),
       motivationalArchetype: motivationalArchetype ?? this.motivationalArchetype,
       preferredGoal: preferredGoal ?? this.preferredGoal,
     );
