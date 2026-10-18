@@ -36,6 +36,18 @@ class ApiEndpoints {
   static const String engagementFeedback = "$baseUrl/engagement/profile-feedback";
   static const String engagementEvaluateTelemetry = "$baseUrl/engagement/telemetry/evaluate";
 
+  // Multiplayer Quiz Arena (Component 3)
+  static const String multiplayerCreate = "$baseUrl/multiplayer/create";
+  static const String multiplayerRoom = "$baseUrl/multiplayer/room";
+  static const String multiplayerJoin = "$baseUrl/multiplayer/join";
+  static const String multiplayerAddBot = "$baseUrl/multiplayer/add-bot";
+  static const String multiplayerStart = "$baseUrl/multiplayer/start";
+  static const String multiplayerSubmitAnswer = "$baseUrl/multiplayer/submit-answer";
+  static const String multiplayerNextQuestion = "$baseUrl/multiplayer/next-question";
+  static const String multiplayerAnalytics = "$baseUrl/multiplayer/analytics";
+  static const String multiplayerParseCsv = "$baseUrl/multiplayer/parse-csv";
+  static const String multiplayerWsBase = "ws://127.0.0.1:8000/api/v1/multiplayer/ws";
+
   // Error Diagnosis (Component 4)
   static const String diagnoseError = "$baseUrl/error/diagnose";
 }

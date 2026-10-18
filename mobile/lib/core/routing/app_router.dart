@@ -12,6 +12,7 @@ import '../../features/mathematics/concept_screen.dart';
 import '../../features/mathematics/question_screen.dart';
 import '../../features/mathematics/answer_submission_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/multiplayer/multiplayer_hub_screen.dart';
 
 class AppRouter {
   static const String splash = '/';
@@ -27,6 +28,7 @@ class AppRouter {
   static const String concept = '/concept';
   static const String question = '/question';
   static const String submit = '/submit';
+  static const String multiplayer = '/multiplayer';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -38,6 +40,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const DashboardScreen());
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
+      case multiplayer:
+        return MaterialPageRoute(builder: (_) => const MultiplayerHubScreen());
       case learningGoal:
         return MaterialPageRoute(builder: (_) => const LearningGoalScreen());
       case learningPath:

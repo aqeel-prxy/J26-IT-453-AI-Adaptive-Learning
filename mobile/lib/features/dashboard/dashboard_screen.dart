@@ -15,7 +15,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _service = LearningPathService();
   int _currentNavIndex = 0;
   Map<String, dynamic>? _activePlan;
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -28,7 +27,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) {
       setState(() {
         _activePlan = plan;
-        _isLoading = false;
       });
     }
   }
@@ -156,9 +154,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // 2. Virtual Pet & Engagement Card (Component 3)
               _buildVirtualPetCard(),
+              const SizedBox(height: 18),
+
+              // 3. Multiplayer Quiz Arena (Component 3)
+              _buildMultiplayerQuizCard(),
               const SizedBox(height: 24),
 
-              // 3. Featured Topics Grid
+              // 4. Curriculum Topics
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -539,6 +541,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ),
   );
 }
+
+  Widget _buildMultiplayerQuizCard() {
+    return InkWell(
+      onTap: () => Navigator.pushNamed(context, AppRouter.multiplayer),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4338CA), Color(0xFF6366F1)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4338CA).withOpacity(0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 26),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                'Multiplayer Quiz',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.textSecondary, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildTopicCard({
     required String title,
