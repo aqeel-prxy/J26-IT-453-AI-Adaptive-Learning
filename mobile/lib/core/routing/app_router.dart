@@ -57,16 +57,24 @@ class AppRouter {
         final args = settings.arguments;
         String solution = '';
         String question = 'Custom Problem';
+        String mode = 'solve';
+        Map<String, dynamic>? initialData;
+
         if (args is Map<String, dynamic>) {
           solution = args['solution'] as String? ?? '';
           question = args['question'] as String? ?? 'Custom Problem';
+          mode = args['mode'] as String? ?? 'solve';
+          initialData = args['solveResult'] as Map<String, dynamic>? ??
+              args['checkResult'] as Map<String, dynamic>?;
         } else if (args is String) {
           solution = args;
         }
         return MaterialPageRoute(
           builder: (_) => AnswerSubmissionScreen(
+            mode: mode,
             submittedSolution: solution,
             questionTitle: question,
+            initialData: initialData,
           ),
         );
       default:

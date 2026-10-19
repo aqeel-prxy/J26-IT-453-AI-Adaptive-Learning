@@ -1,79 +1,150 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ErrorDiagnosisService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
+  /// Platform-aware API Base URL
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:8000/api/v1';
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8000/api/v1';
+    } else {
+      return 'http://127.0.0.1:8000/api/v1';
+    }
+  }
 
-  /// Extract mathematical question from image base64 using OCR
-  static Future<String?> extractQuestionFromOCR(String base64Image) async {
+  /// 1. Extract mathematical question from image using OCR
+  static Future<Map<String, dynamic>> extractQuestionFromOCR(String base64Image) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/error/ocr'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'image_base64': base64Image}),
-      ).timeout(const Duration(seconds: 8));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['extracted_question'] != null) {
-          return data['extracted_question'] as String;
-        }
-      }
-    } catch (_) {
-      // Offline fallback: Return a clean sample quadratic question for OCR
-    }
-    return 'Solve: 2x² + 5x - 3 = 0';
-  }
-
-  /// Solves mathematical problem and diagnoses step-by-step student solution
-  static Future<Map<String, dynamic>> solveAndDiagnose({
-    required String question,
-    required String solution,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/error/solve-and-diagnose'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'question': question,
-          'solution_text': solution,
-        }),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        return {
+          'success': false,
+          'error_message': 'OCR server returned status ${response.statusCode}. Please try again.',
+        };
       }
-    } catch (_) {
-      // Fallback
+    } catch (e) {
+      return {
+        'success': false,
+        'error_message': 'Could not connect to OCR service ($e). Please check backend connection or type manually.',
+      };
     }
+  }
 
-    // Local fallback solving and diagnosis
-    final isSignError = solution.contains('x = 2') || solution.contains('x = 3');
+  /// 2. Solves question automatically and returns verified step-by-step derivation
+  static Future<Map<String, dynamic>> solveQuestion(String question) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/error/solve'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'question': question}),
+      ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        return {
+          'success': false,
+          'supported': false,
+          'error_message': 'Solver service returned status ${response.statusCode}.',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'supported': false,
+        'error_message': 'Connection to solver backend failed ($e). Ensure backend is running.',
+      };
+    }
+  }
+
+  /// 3. Evaluates student's own working derivation ("Check My Working")
+  static Future<Map<String, dynamic>> checkWorking({
+    required String question,
+    required String solutionSteps,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/error/check-working'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'question': question,
+          'solution_steps': solutionSteps,
+        }),
+      ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+
     return {
-      'is_correct': !isSignError,
+      'is_correct': false,
       'question': question,
-      'final_answer': question.contains('2x') ? 'x = -3 or x = 1/2' : 'x = -2 or x = -3',
-      'failed_step_index': isSignError ? 3 : null,
-      'error_category': isSignError ? 'Sign Error' : null,
-      'explanation_text': isSignError
-          ? 'In line 3, equating factor (x + 3) = 0 gives x = -3 (not +3). Positive terms become negative when transposed across the equals sign.'
-          : 'All step-by-step mathematical transformations are sound and mathematically valid.',
-      'pedagogical_guidance': 'Transposition Rule: x + k = 0 ⟹ x = -k.',
-      'correct_steps': question.contains('2x')
-          ? [
-              'Step 1: Write equation in standard form: 2x² + 5x - 3 = 0',
-              'Step 2: Find two numbers whose product is (2)(-3) = -6 and sum is 5: (+6) and (-1)',
-              'Step 3: Split middle term: 2x² + 6x - x - 3 = 0',
-              'Step 4: Factor by grouping: 2x(x + 3) - 1(x + 3) = 0',
-              'Step 5: Factor out common binomial: (2x - 1)(x + 3) = 0',
-              'Step 6: Equate factors to zero: 2x - 1 = 0 ⟹ x = 1/2  ;  x + 3 = 0 ⟹ x = -3'
-            ]
-          : [
-              'Step 1: Write in standard form: x² + 5x + 6 = 0',
-              'Step 2: Find factors of 6 that add to 5: 2 and 3',
-              'Step 3: Factorize the quadratic polynomial: (x + 2)(x + 3) = 0',
-              'Step 4: Equate factors to zero: x + 2 = 0 ⟹ x = -2  ;  x + 3 = 0 ⟹ x = -3'
-            ],
+      'explanation_text': 'Unable to connect to diagnostic service. Please verify your internet/backend connection.',
+      'error_category': 'Connection Error',
     };
+  }
+
+  /// 4. Retrieves a similar practice question for retry
+  static Future<Map<String, dynamic>> getSimilarQuestion(String currentQuestion) async {
+    try {
+      final uri = Uri.parse('$baseUrl/error/similar-question').replace(
+        queryParameters: {'current_question': currentQuestion},
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+
+    return {
+      'concept_id': 'MATH-G10-QUAD-01',
+      'topic': 'Quadratic Equations',
+      'question': 'x² - 5x + 6 = 0',
+      'difficulty': 'Medium',
+      'expected_answer': 'x = 2 or x = 3',
+    };
+  }
+
+  /// 5. Persist attempt into existing database via mathematics/attempts/submit
+  static Future<bool> recordAttempt({
+    required String studentId,
+    required String questionId,
+    required String studentSolution,
+    required int responseTimeMs,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/mathematics/attempts/submit'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'student_id': studentId,
+          'question_id': questionId,
+          'student_solution': studentSolution,
+          'response_time_ms': responseTimeMs,
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Backwards compatibility method
+  static Future<Map<String, dynamic>> solveAndDiagnose({
+    required String question,
+    required String solution,
+  }) async {
+    return checkWorking(question: question, solutionSteps: solution);
   }
 }
