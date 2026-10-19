@@ -27,19 +27,28 @@ To develop and evaluate a curriculum-grounded, AI-based adaptive learning platfo
 
 ## 6. Four Research Components
 
-### Component 1: AI-Based Adaptive Mathematics Representation and Visualization
+### Component 1: AI-Based Goal-Aware and Prerequisite-Adaptive Mathematics Learning Path Planning for Grade 11 Students
 - **Owner**: Aqeel M.I.M (IT23244016)
-- **Objective**: Dynamically select and switch between concept representations based on individual learner mastery, interaction patterns, and concept characteristics.
+- **Objective**: Develop and evaluate a learning-path planning method that combines:
+  1. A trained supervised machine-learning model estimating learner readiness for mathematical concepts.
+  2. A curriculum-grounded representation of mathematical concepts and explicit prerequisite dependencies (Primary topic: Grade 11 Indices and Logarithms; Secondary: Graphs).
+  3. The learner's selected goal (Term-test preparation vs. Comprehensive learning) and available study time.
+  4. Prerequisite-aware planning logic determining whether the learner should proceed directly, revise prerequisites, study worked examples, practise, or reassess.
+  5. Dynamic pathway revision when new assessment evidence becomes available.
 - **Responsibilities**:
-  - Maintain a repository of curriculum-aligned mathematical representations (textual explanations, diagrams, graphs, visual examples, step-by-step breakdowns).
-  - Select optimal representations using learner state evidence.
-  - Dynamically switch representation upon persistent learner struggle.
-  - Ensure semantic consistency and synchronization across representations.
-  - Record representation efficacy outcomes for research evaluation.
-- **Inputs**: Learner mastery state (Component 2), interaction history, question/concept metadata.
-- **Outputs**: Selected representation payload, representation switch events, outcome logs.
-- **Novelty / Contribution**: Learner-aware, dynamic multi-representation selection mechanism for secondary school mathematics.
-- **Evaluation Areas**: Conceptual understanding gain, task accuracy, time to mastery, representation switch effectiveness, expert-rated appropriateness.
+  - Maintain a curriculum-grounded Directed Acyclic Graph (DAG) of Grade 11 mathematical concepts and prerequisite relationships based on approved Sri Lankan textbooks.
+  - Implement a transparent feature pipeline and train supervised ML readiness models (Logistic Regression baseline, Random Forest, Gradient Boosting) predicting correctness probability on target concepts before attempt execution.
+  - Execute goal-aware path planning that balances student goals (fast-track term-test revision with strict time bounds vs. in-depth comprehensive learning) while strictly preserving essential mathematical prerequisite constraints.
+  - Dynamically revise recommended learning pathways as new diagnostic, quiz, and practice evidence is submitted.
+  - Log pathway decisions, prerequisite checks, and readiness telemetry for research evaluation.
+- **Inputs**: Student learning goal and available time, diagnostic quiz evidence, concept prerequisite graph, concept mastery state (Component 2), step-level error categories (Component 4).
+- **Outputs**: Recommended learning activity sequence, prerequisite revision flags, activity rationale, dynamic pathway updates.
+- **Provisional Research Gap & Novelty**:
+  - *Provisional Gap*: Existing digital learning platforms commonly apply static curricular sequences or unconstrained recommender systems that neglect formal prerequisite dependency constraints and distinct learner study goals (e.g. short-term exam readiness vs deep mastery).
+  - *Note*: This research gap is provisional and requires formal literature review and supervisor sign-off before being claimed as an established academic contribution.
+  - *Novelty*: Integrating supervised ML readiness prediction with explicit curriculum prerequisite DAG constraints and learner goal models to generate dynamically revised learning pathways for Grade 11 secondary mathematics.
+- **Evaluation Areas**: Readiness prediction accuracy (ROC-AUC, F1-score, Brier score calibration), prerequisite constraint satisfaction rate, learning efficiency (pre/post learning gain, time to mastery), pathway suitability comparison against Baseline 1 (Fixed Sequence) and Baseline 2 (Static Rule-Based Planning).
+
 
 ### Component 2: AI-Based Multi-Modal and Time-Aware Learner Profiling & Knowledge Tracing
 - **Owner**: Jayasinghe J.A.N.V (IT23319356)
@@ -88,35 +97,44 @@ To develop and evaluate a curriculum-grounded, AI-based adaptive learning platfo
 ## 7. Component Inter-Dependencies
 
 ```
-                      +-----------------------------+
-                      |   Student / Mobile App      |
-                      +--------------+--------------+
-                                     |
-                                     v
-                      +-----------------------------+
-                      |  Learning Activity / Quiz   |
-                      +--------------+--------------+
-                                     |
-                                     v
-+------------------------+  Attempt  +------------------------+
-| Component 4:           | --------> | Component 2:           |
-| Solution Analysis      |           | Learner Profiling      |
-| & Error Diagnosis      | <-------- | & Knowledge Tracing    |
-+-----------+------------+  Mastery  +-----------+------------+
-            |               Vector               |
-            | Error                              | Mastery State
-            v Type                               v
-+------------------------+           +------------------------+
-| Component 3:           |           | Component 1:           |
-| Engagement &          | <-------- | Adaptive               |
-| Adaptive Feedback      | Activity  | Representation         |
-+------------------------+ Outcomes  +------------------------+
+                      +---------------------------------------+
+                      |         Student / Mobile App          |
+                      +-------------------+-------------------+
+                                          |
+                                          v
+                      +---------------------------------------+
+                      | Component 1 (Aqeel):                  |
+                      | Goal-Aware & Prerequisite-Adaptive    |
+                      | Learning Path Planner                 |
+                      +---------+-------------------+---------+
+                                |                   ^
+            Recommended Activity|                   | Dynamic Pathway
+                                v                   | Revision
+                      +-------------------+         |
+                      | Lesson / Question |         |
+                      +---------+---------+         |
+                                |                   |
+                                v Attempt           |
++------------------------+ Evidence +------------------------+
+| Component 4:           | -------> | Component 2:           |
+| Solution Analysis      |          | Learner Profiling      |
+| & Error Diagnosis      | <------- | & Knowledge Tracing    |
++-----------+------------+ Mastery  +-----------+------------+
+            |              Vector               |
+            | Step                              | Evolving
+            | Error                             | Mastery
+            v Details                           v State
++------------------------+          +------------------------+
+| Component 3:           | Activity | Component 1:           |
+| Engagement &          | <------- | Learning Path Revision |
+| Adaptive Feedback      | Outcomes | & Next Activity Rec    |
++------------------------+          +------------------------+
 ```
 
-1. **Component 2 (Learner Profiling)** acts as the central state provider, providing concept mastery levels to **Component 1 (Representation)** for content selection and **Component 3 (Engagement)** for challenge calibration.
-2. **Component 4 (Error Diagnosis)** feeds granular error classifications into **Component 2**, enabling the profiling engine to update specific concept weakness indicators.
-3. **Component 1 (Representation)** serves tailored explanations for misconceptions flagged by **Component 4**.
-4. **Component 3 (Engagement)** uses activity outcomes from all components to adjust streak rewards and virtual-pet health.
+1. **Component 1 (Learning Path Planning)** directs the student's curricular journey based on their selected goal (term-test vs comprehensive) and predicted concept readiness constrained by the Grade 11 prerequisite DAG.
+2. **Component 2 (Learner Profiling)** maintains the evolving concept mastery vector and recent accuracy trends, feeding real-time learner state into **Component 1** for readiness evaluation and **Component 3** for challenge calibration.
+3. **Component 4 (Error Diagnosis)** analyzes step-level solutions to pinpoint procedural/conceptual errors and feeds granular diagnostic feedback into **Component 2** (mastery adjustment) and **Component 1** (targeted prerequisite remediation).
+4. **Component 3 (Engagement)** monitors pathway activity completions to grant progressive streaks, update virtual-pet progression, and trigger motivational feedback.
 
 ---
 

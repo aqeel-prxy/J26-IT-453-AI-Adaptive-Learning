@@ -54,3 +54,13 @@ All unresolved items are tagged with **`REQUIRES TEAM DECISION`**.
 - **Rule**: Raw student PII (names, phone numbers) must not be stored alongside research evaluation logs. Anonymous student UUIDs shall be generated for all telemetry.
 - **Status**: **`REQUIRES TEAM DECISION`**
 - **Action Needed**: Verify school trial consent protocol and anonymization procedure.
+
+### DEC-07: Authentic Student Response Dataset Strategy for Learning Path Planning (Component 1)
+- **Context**: The supervised ML readiness prediction model requires student attempt records across prerequisite concepts and target concepts (Indices & Logarithms) to train Logistic Regression, Random Forest, and Gradient Boosting models without target leakage.
+- **Research Safeguards**:
+  - The research must prioritize authentic student response logs or established educational benchmarks (e.g., ASSISTments / EdNet subsets or curated Sri Lankan school diagnostic trials).
+  - Synthetic data may strictly be used for pipeline/integration testing only and must be labeled as `development-only`.
+  - Synthetic data must never be claimed to establish research effectiveness for real students.
+- **Status**: **`REQUIRES SUPERVISOR APPROVAL`**
+- **Action Needed**: Aqeel to audit available authentic datasets and seek supervisor guidance before committing to a data-collection or benchmark adaptation approach.
+
