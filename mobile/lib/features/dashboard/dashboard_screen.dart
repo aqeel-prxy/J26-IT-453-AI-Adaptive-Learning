@@ -38,13 +38,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _currentNavIndex = index);
 
     if (index == 1) {
-      Navigator.pushNamed(context, AppRouter.learningPath).then((_) => _fetchDashboardState());
+      Navigator.pushNamed(context, AppRouter.learningPath).then((_) {
+        if (mounted) {
+          _fetchDashboardState();
+          setState(() => _currentNavIndex = 0);
+        }
+      });
     } else if (index == 2) {
-      Navigator.pushNamed(context, AppRouter.diagnostic).then((_) => _fetchDashboardState());
+      Navigator.pushNamed(context, AppRouter.diagnostic).then((_) {
+        if (mounted) {
+          _fetchDashboardState();
+          setState(() => _currentNavIndex = 0);
+        }
+      });
     } else if (index == 3) {
-      Navigator.pushNamed(context, AppRouter.telemetry);
+      Navigator.pushNamed(context, AppRouter.question).then((_) {
+        if (mounted) {
+          _fetchDashboardState();
+          setState(() => _currentNavIndex = 0);
+        }
+      });
+    } else if (index == 4) {
+      Navigator.pushNamed(context, AppRouter.telemetry).then((_) {
+        if (mounted) {
+          setState(() => _currentNavIndex = 0);
+        }
+      });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -224,6 +246,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.quiz_outlined),
             selectedIcon: Icon(Icons.quiz),
             label: 'Diagnostic',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fact_check_outlined),
+            selectedIcon: Icon(Icons.fact_check),
+            label: 'Error Diagnosis',
           ),
           NavigationDestination(
             icon: Icon(Icons.analytics_outlined),
