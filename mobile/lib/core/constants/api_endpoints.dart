@@ -25,7 +25,7 @@ class ApiEndpoints {
   static String get concepts => "$baseUrl/mathematics/concepts";
   static String get submitAttempt => "$baseUrl/mathematics/attempts/submit";
 
-  // Component 1: Learning Path Planning (Aqeel M.I.M - IT23244016)
+  // Module: Learning Path Planning Engine
   static String get learningPathCurriculum => "$baseUrl/learning-path/curriculum";
   static String get learningPathDiagnosticQuestions => "$baseUrl/learning-path/diagnostic/questions";
   static String get learningPathDiagnosticSubmit => "$baseUrl/learning-path/diagnostic/submit";
@@ -35,17 +35,17 @@ class ApiEndpoints {
   static String get learningPathTelemetry => "$baseUrl/learning-path/telemetry";
   static String get learningPathBaselines => "$baseUrl/learning-path/baselines/compare";
 
-  // Legacy Representation Endpoints (Component 1 backwards compatibility)
+  // Representation Compatibility Endpoints
   static String get selectRepresentation => "$baseUrl/representation/select";
   static String get recordOutcome => "$baseUrl/representation/outcome";
 
-  // Learner Profiling (Component 2)
+  // Learner Profiling
   static String get learnerProfile => "$baseUrl/learner/profile";
 
-  // Engagement (Component 3)
+  // Engagement & Gamification
   static String get engagementDashboard => "$baseUrl/engagement/dashboard";
 
-  // Error Diagnosis (Component 4)
+  // Error Diagnosis
   static String get diagnoseError => "$baseUrl/error/diagnose";
 }
 
