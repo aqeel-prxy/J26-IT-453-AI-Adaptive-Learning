@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:typed_data';
 
@@ -12,11 +13,30 @@ class PickedImageData {
     required this.bytes,
     this.dataUrl,
   });
+
+  String get base64String => base64Encode(bytes);
 }
 
 Future<PickedImageData?> pickImageFromDevice() async {
+  return pickImageFromGallery();
+}
+
+Future<PickedImageData?> pickImageFromGallery() async {
+  return _pickFile(useCamera: false);
+}
+
+Future<PickedImageData?> takePhotoFromCamera() async {
+  return _pickFile(useCamera: true);
+}
+
+Future<PickedImageData?> _pickFile({required bool useCamera}) async {
   final completer = Completer<PickedImageData?>();
   final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
+  
+  if (useCamera) {
+    uploadInput.setAttribute('capture', 'environment');
+  }
+
   uploadInput.click();
 
   uploadInput.onChange.listen((e) {
