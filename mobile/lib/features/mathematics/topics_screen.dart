@@ -207,7 +207,7 @@ class TopicsScreen extends StatelessWidget {
                         size: 18,
                       ),
                       label: Text(
-                        isFeatured ? 'Open AI Learning Path (Aqeel)' : 'Explore Concepts',
+                        isFeatured ? 'Open AI Learning Pathway' : 'Explore Concepts',
                         style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
                       ),
                     ),

@@ -93,10 +93,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
                 // Main App Title (required by widget_test)
                 Text(
-                  'J26-IT-453 Adaptive Learning',
+                  'AdaptiveMath AI',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 24,
+                    fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                     letterSpacing: -0.3,

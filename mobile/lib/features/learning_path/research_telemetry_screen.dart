@@ -79,7 +79,7 @@ class _ResearchTelemetryScreenState extends State<ResearchTelemetryScreen> {
                       const Icon(Icons.school, color: Colors.white, size: 22),
                       const SizedBox(width: 8),
                       Text(
-                        'Component 1 Research Telemetry',
+                        'Adaptive Engine Telemetry & System Analytics',
                         style: GoogleFonts.plusJakartaSans(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -90,7 +90,7 @@ class _ResearchTelemetryScreenState extends State<ResearchTelemetryScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Aqeel M.I.M (IT23244016) • Sri Lanka Grade 11 Mathematics',
+                    'Goal-Aware & Prerequisite-Adaptive Path Planning • Grade 10 & 11 Mathematics',
                     style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 12),
                   ),
                   const SizedBox(height: 12),
@@ -197,7 +197,7 @@ class _ResearchTelemetryScreenState extends State<ResearchTelemetryScreen> {
                     '• Cohort 1 (N=30): Topic A (Indices) on Adaptive ML ➔ Topic B (Logarithms) on Fixed Baseline\n'
                     '• Cohort 2 (N=30): Topic A (Indices) on Fixed Baseline ➔ Topic B (Logarithms) on Adaptive ML\n'
                     '• Protocol: Pre-test (Day 1) ➔ Adaptive Path (Days 2-10) ➔ Post-test (Day 11) ➔ Retention (Day 21)\n'
-                    '• Feature Integration: Consumes Component 2 (Jayasinghe) Latent Mastery Vector',
+                    '• Feature Integration: Consumes Cognitive Mastery Vector P(Kc)',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       color: AppTheme.textSecondary,

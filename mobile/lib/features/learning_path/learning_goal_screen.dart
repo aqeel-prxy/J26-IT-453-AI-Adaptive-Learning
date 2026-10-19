@@ -118,7 +118,7 @@ class _LearningGoalScreenState extends State<LearningGoalScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Aqeel\'s Machine Learning DAG Engine',
+                          'Adaptive Machine Learning DAG Engine',
                           style: GoogleFonts.plusJakartaSans(
                             color: Colors.white70,
                             fontSize: 12,
