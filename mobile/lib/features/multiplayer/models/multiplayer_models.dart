@@ -17,6 +17,8 @@ class QuizQuestion {
     required this.difficulty,
   });
 
+  bool get isMcq => options.isNotEmpty;
+
   factory QuizQuestion.fromJson(Map<String, dynamic> json) {
     return QuizQuestion(
       questionId: json['question_id'] as String? ?? 'q1',

@@ -176,8 +176,9 @@ async def submit_answer(payload: SubmitAnswerRequest):
             pin=payload.pin,
             player_id=payload.player_id,
             question_index=payload.question_index,
-            selected_option_index=payload.selected_option_index,
+            selected_option_index=payload.selected_option_index or 0,
             response_time_ms=payload.response_time_ms,
+            text_answer=payload.text_answer,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 class QuizQuestionSchema(BaseModel):
     question_id: str
     question_text: str
-    options: List[str]
-    correct_index: int
+    options: List[str] = Field(default_factory=list)
+    correct_index: int = 0
     explanation: str = ""
     topic: str = "Mathematics"
     difficulty: str = "Medium"
@@ -50,7 +50,8 @@ class SubmitAnswerRequest(BaseModel):
     pin: str
     player_id: str
     question_index: int
-    selected_option_index: int
+    selected_option_index: Optional[int] = 0
+    text_answer: Optional[str] = ""
     response_time_ms: int = 5000
 
 

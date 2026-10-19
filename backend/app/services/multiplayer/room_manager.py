@@ -462,8 +462,9 @@ class RoomManager:
         pin: str,
         player_id: str,
         question_index: int,
-        selected_option_index: int,
-        response_time_ms: int
+        selected_option_index: Optional[int] = 0,
+        response_time_ms: int = 5000,
+        text_answer: Optional[str] = None
     ) -> Dict[str, Any]:
         room = cls._rooms.get(pin)
         if not room:
@@ -473,7 +474,12 @@ class RoomManager:
             raise ValueError("Invalid question index.")
 
         question = room["questions"][question_index]
-        is_correct = (selected_option_index == question["correct_index"])
+        is_mcq = bool(question.get("options") and len(question["options"]) > 0)
+        if is_mcq:
+            is_correct = (selected_option_index == question.get("correct_index", 0))
+        else:
+            # For non-MCQ questions shown to student, student text submission earns points
+            is_correct = True
 
         # Calculate score: Base 100 for correct + Speed bonus up to 50
         time_limit_ms = room["time_per_question"] * 1000

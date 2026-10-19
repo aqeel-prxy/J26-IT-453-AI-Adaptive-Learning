@@ -287,68 +287,132 @@ class _TeacherLiveControlScreenState extends State<TeacherLiveControlScreen> {
                         const SizedBox(height: 20),
 
                         // Options & Answer Key
-                        Text(
-                          'Option Distribution & Correct Key',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 10),
+                        // Options & Answer Key (if MCQ) or Open Question Notice (if Non-MCQ)
+                        if (q.options.isNotEmpty) ...[
+                          Text(
+                            'Option Distribution & Correct Key',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 10),
 
-                        ...List.generate(q.options.length, (idx) {
-                          final isCorrect = idx == q.correctIndex;
-                          final letter = String.fromCharCode(65 + idx);
+                          ...List.generate(q.options.length, (idx) {
+                            final isCorrect = idx == q.correctIndex;
+                            final letter = String.fromCharCode(65 + idx);
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isCorrect ? AppTheme.successBg : Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: isCorrect ? AppTheme.successGreen : AppTheme.borderLight,
-                                width: isCorrect ? 1.8 : 1.0,
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isCorrect ? AppTheme.successBg : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isCorrect ? AppTheme.successGreen : AppTheme.borderLight,
+                                  width: isCorrect ? 1.8 : 1.0,
+                                ),
                               ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: isCorrect ? AppTheme.successGreen : const Color(0xFFF1F5F9),
+                                    child: Text(
+                                      letter,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: isCorrect ? Colors.white : AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      q.options[idx],
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: isCorrect ? FontWeight.w800 : FontWeight.w600,
+                                        color: isCorrect ? const Color(0xFF166534) : AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isCorrect)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.successGreen,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'KEY',
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ] else ...[
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAF5FF),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFE9D5FF)),
                             ),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                CircleAvatar(
-                                  radius: 12,
-                                  backgroundColor: isCorrect ? AppTheme.successGreen : const Color(0xFFF1F5F9),
-                                  child: Text(
-                                    letter,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      color: isCorrect ? Colors.white : AppTheme.textPrimary,
+                                Row(
+                                  children: [
+                                    const Icon(Icons.help_outline_rounded, size: 18, color: Color(0xFF7C3AED)),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Direct Question (Non-MCQ)',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF7C3AED),
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    q.options[idx],
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13,
-                                      fontWeight: isCorrect ? FontWeight.w800 : FontWeight.w600,
-                                      color: isCorrect ? const Color(0xFF166534) : AppTheme.textPrimary,
-                                    ),
-                                  ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'This question is shown directly to students without choices. Students submit their free text answers directly.',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
                                 ),
-                                if (isCorrect)
+                                if (q.explanation.isNotEmpty) ...[
+                                  const SizedBox(height: 10),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.successGreen,
-                                      borderRadius: BorderRadius.circular(6),
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFFE9D5FF)),
                                     ),
-                                    child: const Text(
-                                      'KEY',
-                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.check_circle_outline, size: 16, color: AppTheme.successGreen),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Reference Key / Solution: ${q.explanation}',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppTheme.textPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
+                                ],
                               ],
                             ),
-                          );
-                        }),
+                          ),
+                        ],
                         const SizedBox(height: 36),
 
                         // Next Question Control Button

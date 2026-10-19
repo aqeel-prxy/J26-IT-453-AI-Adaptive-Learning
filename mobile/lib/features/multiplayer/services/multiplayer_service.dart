@@ -163,6 +163,7 @@ class MultiplayerService {
     required int questionIndex,
     required int selectedOptionIndex,
     required int responseTimeMs,
+    String? textAnswer,
   }) async {
     final payload = {
       'pin': pin,
@@ -170,6 +171,7 @@ class MultiplayerService {
       'question_index': questionIndex,
       'selected_option_index': selectedOptionIndex,
       'response_time_ms': responseTimeMs,
+      if (textAnswer != null) 'text_answer': textAnswer,
     };
 
     try {
@@ -180,7 +182,8 @@ class MultiplayerService {
       final local = _localRooms[pin];
       if (local != null && questionIndex < local.questions.length) {
         final q = local.questions[questionIndex];
-        final isCorrect = (selectedOptionIndex == q.correctIndex);
+        final isMcq = q.options.isNotEmpty;
+        final isCorrect = isMcq ? (selectedOptionIndex == q.correctIndex) : true;
         final timeFraction = (1.0 - (responseTimeMs / (local.timePerQuestion * 1000))).clamp(0.0, 1.0);
         final earned = isCorrect ? (100 + (50 * timeFraction).toInt()) : 0;
 
@@ -198,7 +201,7 @@ class MultiplayerService {
           isCorrect: isCorrect,
           earnedScore: earned,
           correctIndex: q.correctIndex,
-          explanation: q.explanation,
+          explanation: q.explanation.isNotEmpty ? q.explanation : (isMcq ? '' : 'Answer recorded!'),
           leaderboard: local.players,
         );
       }

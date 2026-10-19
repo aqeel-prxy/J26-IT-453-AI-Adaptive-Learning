@@ -33,10 +33,12 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
   bool _hasAnswered = false;
   AnswerOutcome? _lastOutcome;
   final Stopwatch _questionStopwatch = Stopwatch();
+  late final TextEditingController _directAnswerController;
 
   @override
   void initState() {
     super.initState();
+    _directAnswerController = TextEditingController();
     _room = widget.room;
     _currentQuestionIndex = _room.currentQuestionIndex;
     _totalSeconds = _room.timePerQuestion;
@@ -49,6 +51,7 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
   void dispose() {
     _countdownTimer?.cancel();
     _questionStopwatch.stop();
+    _directAnswerController.dispose();
     super.dispose();
   }
 
@@ -57,6 +60,7 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
     _hasAnswered = false;
     _lastOutcome = null;
     _secondsLeft = _totalSeconds;
+    _directAnswerController.clear();
     _questionStopwatch.reset();
     _questionStopwatch.start();
 
@@ -67,7 +71,12 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
       } else {
         timer.cancel();
         if (!_hasAnswered) {
-          _submitAnswer(-1); // timed out
+          final curr = _currentQuestion;
+          if (curr != null && curr.options.isEmpty) {
+            _submitDirectAnswer();
+          } else {
+            _submitAnswer(-1); // timed out
+          }
         }
       }
     });
@@ -90,6 +99,41 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
       questionIndex: _currentQuestionIndex,
       selectedOptionIndex: optionIndex,
       responseTimeMs: responseTime,
+    );
+
+    if (mounted) {
+      setState(() {
+        _lastOutcome = outcome;
+        _room.players = outcome.leaderboard;
+      });
+
+      // Auto-advance after 2.5 seconds review
+      Future.delayed(const Duration(milliseconds: 2500), () {
+        if (mounted) _advanceNext();
+      });
+    }
+  }
+
+  Future<void> _submitDirectAnswer() async {
+    if (_hasAnswered) return;
+    _countdownTimer?.cancel();
+    _questionStopwatch.stop();
+
+    final responseTime = _questionStopwatch.elapsedMilliseconds;
+    final text = _directAnswerController.text.trim();
+
+    setState(() {
+      _hasAnswered = true;
+      _selectedOption = 0;
+    });
+
+    final outcome = await _service.submitAnswer(
+      pin: _room.pin,
+      playerId: widget.currentPlayerId,
+      questionIndex: _currentQuestionIndex,
+      selectedOptionIndex: 0,
+      responseTimeMs: responseTime,
+      textAnswer: text.isNotEmpty ? text : '(No answer provided)',
     );
 
     if (mounted) {
@@ -290,14 +334,93 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                         ),
                         const SizedBox(height: 20),
 
-                        // 4 Option Buttons
-                        ...List.generate(q.options.length, (index) {
-                          return _buildOptionButton(
-                            optionIndex: index,
-                            text: q.options[index],
-                            correctIndex: q.correctIndex,
-                          );
-                        }),
+                        // Options (if MCQ) or Direct Question Input (if Non-MCQ)
+                        if (q.options.isNotEmpty) ...[
+                          // MCQ Option Buttons
+                          ...List.generate(q.options.length, (index) {
+                            return _buildOptionButton(
+                              optionIndex: index,
+                              text: q.options[index],
+                              correctIndex: q.correctIndex,
+                            );
+                          }),
+                        ] else ...[
+                          // Direct Question Input Card for Student
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppTheme.borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.edit_note_rounded, size: 20, color: AppTheme.primaryBlue),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Enter Your Answer',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _directAnswerController,
+                                  enabled: !_hasAnswered,
+                                  maxLines: 2,
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
+                                  decoration: InputDecoration(
+                                    hintText: 'Type your answer or working here...',
+                                    hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppTheme.textSecondary),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF8FAFC),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(color: AppTheme.borderLight),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(color: AppTheme.borderLight),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.8),
+                                    ),
+                                    contentPadding: const EdgeInsets.all(14),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                ElevatedButton.icon(
+                                  onPressed: _hasAnswered ? null : _submitDirectAnswer,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryBlue,
+                                    minimumSize: const Size(double.infinity, 48),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                  icon: const Icon(Icons.send_rounded, size: 18, color: Colors.white),
+                                  label: Text(
+                                    _hasAnswered ? 'Submitted' : 'Submit Answer',
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
 
                         // Instant Result Banner
                         if (_hasAnswered && _lastOutcome != null) ...[
@@ -324,22 +447,25 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        _lastOutcome!.isCorrect
-                                            ? 'Correct! +${_lastOutcome!.earnedScore} pts'
-                                            : 'Incorrect (Correct: ${q.options[q.correctIndex]})',
+                                        q.options.isNotEmpty
+                                            ? (_lastOutcome!.isCorrect
+                                                ? 'Correct! +${_lastOutcome!.earnedScore} pts'
+                                                : 'Incorrect (Correct: ${q.options[q.correctIndex.clamp(0, q.options.length - 1)]})')
+                                            : 'Answer Recorded! +${_lastOutcome!.earnedScore} pts',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w800,
                                           color: _lastOutcome!.isCorrect ? AppTheme.successGreen : AppTheme.errorRed,
                                         ),
                                       ),
-                                      Text(
-                                        _lastOutcome!.explanation,
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          color: AppTheme.textSecondary,
+                                      if (_lastOutcome!.explanation.isNotEmpty)
+                                        Text(
+                                          _lastOutcome!.explanation,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            color: AppTheme.textSecondary,
+                                          ),
                                         ),
-                                      ),
                                     ],
                                   ),
                                 ),
