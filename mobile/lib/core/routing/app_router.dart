@@ -11,6 +11,8 @@ import '../../features/mathematics/topics_screen.dart';
 import '../../features/mathematics/concept_screen.dart';
 import '../../features/mathematics/question_screen.dart';
 import '../../features/mathematics/answer_submission_screen.dart';
+import '../../features/learner_profiling/learner_profiling_screen.dart';
+import '../../features/gamification/gamification_hub_screen.dart';
 
 class AppRouter {
   static const String splash = '/';
@@ -25,6 +27,8 @@ class AppRouter {
   static const String concept = '/concept';
   static const String question = '/question';
   static const String submit = '/submit';
+  static const String learnerProfiling = '/learner-profiling';
+  static const String gamification = '/gamification';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -64,6 +68,10 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => AnswerSubmissionScreen(submittedSolution: solution),
         );
+      case learnerProfiling:
+        return MaterialPageRoute(builder: (_) => const LearnerProfilingScreen());
+      case gamification:
+        return MaterialPageRoute(builder: (_) => const GamificationHubScreen());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

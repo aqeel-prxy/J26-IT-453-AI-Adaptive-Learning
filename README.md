@@ -17,10 +17,11 @@ Project **J26-IT-453** provides an AI-based adaptive learning platform that cont
 
 | Component | Research Title | Owner | Student ID |
 | :--- | :--- | :--- | :--- |
-| **Component 1** | **AI-Based Goal-Aware and Prerequisite-Adaptive Mathematics Learning Path Planning for Grade 11 Students** | **Aqeel M.I.M** | IT23244016 |
+| **Component 1** | **AI-Based Goal-Aware and Prerequisite-Adaptive Mathematics Learning Path Planning for Grade 10–11 Students** | **Aqeel M.I.M** | IT23244016 |
 | **Component 2** | AI-Based Multi-Modal and Time-Aware Learner Profiling & Knowledge Tracing | **Jayasinghe J.A.N.V** | IT23319356 |
 | **Component 3** | AI-Assisted Engagement, Gamification and Feedback Adaptation | **Dharmasena K.C.D** | IT23320628 |
 | **Component 4** | AI-Assisted Mathematical Solution Analysis, Error Diagnosis and Personalized Correction | **Ranathunga K.P.B.S** | IT23322530 |
+
 
 ---
 

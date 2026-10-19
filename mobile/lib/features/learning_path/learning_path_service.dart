@@ -516,7 +516,7 @@ class LearningPathService {
     },
     "models_evaluated": {
       "adaptive_ml": {
-        "name": "Adaptive ML Goal-Aware Planner (Aqeel)",
+        "name": "Adaptive ML Goal-Aware Pathway Engine",
         "model_family": "RandomForest Classifier + Topological DAG",
         "accuracy": 0.7473,
         "f1_score": 0.8414,
@@ -527,7 +527,7 @@ class LearningPathService {
         "prerequisite_guardrail_type": "Topological Invariant Guardrail (Zero Violations by Construction)",
         "dynamic_revision_supported": true,
         "estimated_time_to_mastery_minutes": 95,
-        "description": "Dynamically selects optimal next action, fuses Component 2 mastery, and prevents prerequisite cognitive overload."
+        "description": "Dynamically selects optimal next action, fuses cognitive mastery vectors, and prevents prerequisite cognitive overload."
       },
       "baseline_1_fixed_sequence": {
         "name": "Baseline 1: Fixed Textbook Sequence",
@@ -558,7 +558,7 @@ class LearningPathService {
         "description": "Applies static threshold logic without probabilistic calibration or goal bounding."
       }
     },
-    "research_conclusion": "Component 1 Adaptive ML pathway achieves highest Normalized Learning Gain (g = 0.684 vs 0.382), F1 score (0.8414 ± 0.029), 86.5% remediation success rate, and reduces time-to-mastery by 38.7% with 100% prerequisite integrity guaranteed as a topological invariant."
+    "research_conclusion": "Adaptive ML pathway achieves highest Normalized Learning Gain (g = 0.684 vs 0.382), F1 score (0.8414 ± 0.029), 86.5% remediation success rate, and reduces time-to-mastery by 38.7% with 100% prerequisite integrity guaranteed as a topological invariant."
   };
 
   static final Map<String, Map<String, dynamic>> _localMockLessons = {

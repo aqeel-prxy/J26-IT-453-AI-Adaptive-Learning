@@ -63,7 +63,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Research Telemetry & Baselines'), findsOneWidget);
-    expect(find.text('Component 1 Research Telemetry'), findsOneWidget);
+    expect(find.text('Adaptive Engine Telemetry & System Analytics'), findsOneWidget);
     expect(find.text('ML Readiness F1'), findsOneWidget);
     expect(find.text('Prereq Integrity'), findsOneWidget);
     expect(find.text('Comparative Baseline Evaluation (REQ-C1-08)'), findsOneWidget);
