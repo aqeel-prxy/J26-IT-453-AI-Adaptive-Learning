@@ -52,6 +52,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Navigator.pushNamed(context, AppRouter.submit).then((_) {
         if (mounted) setState(() => _currentNavIndex = 0);
       });
+    } else if (index == 5) {
+      Navigator.pushNamed(context, AppRouter.profile).then((_) {
+        if (mounted) setState(() => _currentNavIndex = 0);
+        _fetchDashboardState();
+      });
     }
   }
 
@@ -149,6 +154,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(width: 6),
 
+          // Profile & AI Feedback button (Component 3: Dharmasena K.C.D)
+          IconButton(
+            tooltip: 'Profile & AI Feedback',
+            icon: const CircleAvatar(
+              radius: 14,
+              backgroundColor: AppTheme.primaryLight,
+              child: Text('🦊', style: TextStyle(fontSize: 15)),
+            ),
+            onPressed: () => Navigator.pushNamed(context, AppRouter.profile).then((_) => _fetchDashboardState()),
+          ),
+          const SizedBox(width: 4),
+
           IconButton(
             tooltip: 'Logout',
             icon: const Icon(Icons.logout, size: 20),
@@ -179,9 +196,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 topicCategory: topicCategory,
                 isG10: isG10,
               ),
+              const SizedBox(height: 18),
+
+              // 3. Multiplayer Quiz Arena (Component 3: Dharmasena K.C.D)
+              _buildMultiplayerQuizCard(),
               const SizedBox(height: 24),
 
-              // 3. Multi-Engine Architecture & Data Flow
+              // 4. Multi-Engine Architecture & Data Flow
               _buildSystemArchitectureCard(),
               const SizedBox(height: 24),
 
@@ -226,6 +247,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.fact_check_outlined),
             selectedIcon: Icon(Icons.fact_check),
             label: 'Diagnostics',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
       ),
@@ -953,7 +979,177 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // =========================================================================
-  // 3. MULTI-ENGINE ARCHITECTURE & DATA FLOW
+  // 3. MULTIPLAYER QUIZ ARENA (Component 3: Dharmasena K.C.D)
+  // =========================================================================
+  Widget _buildMultiplayerQuizCard() {
+    return InkWell(
+      onTap: () => Navigator.pushNamed(context, AppRouter.multiplayer),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4338CA), Color(0xFF6366F1)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4338CA).withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 26),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Multiplayer Quiz Arena',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15.5,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Real-time competitive quizzes, room codes & live peer battle',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.textSecondary, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVirtualPetCard() {
+    return InkWell(
+      onTap: () => Navigator.pushNamed(context, AppRouter.profile).then((_) => _fetchDashboardState()),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0D9488), Color(0xFF14B8A6)],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0D9488).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Text('🦊', style: TextStyle(fontSize: 28)),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'MathPaws (Level 2)',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.successBg,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'Happy',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: AppTheme.successGreen,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Health: 95/100 • Streak: 4 Days',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: const LinearProgressIndicator(
+                      value: 0.95,
+                      backgroundColor: Color(0xFFE2E8F0),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
+                      minHeight: 6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // =========================================================================
+  // 4. MULTI-ENGINE ARCHITECTURE & DATA FLOW
   // =========================================================================
   Widget _buildSystemArchitectureCard() {
     return Container(
