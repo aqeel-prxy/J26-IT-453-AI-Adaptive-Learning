@@ -710,7 +710,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => Navigator.pushNamed(context, AppRouter.lessonUnit, arguments: conceptId),
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppRouter.lessonUnit,
+                        arguments: {
+                          'conceptId': conceptId,
+                          'goalType': _activePlan?['goal_type'] ?? 'TERM_TEST',
+                          'gradeLevel': _activePlan?['grade_level'] ?? 11,
+                        },
+                      ),
                       icon: const Icon(Icons.menu_book_outlined, size: 14),
                       label: const Text('Lesson Unit', style: TextStyle(fontSize: 11.5)),
                       style: OutlinedButton.styleFrom(

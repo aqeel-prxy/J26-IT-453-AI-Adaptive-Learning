@@ -6,10 +6,14 @@ import 'learning_path_service.dart';
 
 class LessonUnitScreen extends StatefulWidget {
   final String conceptId;
+  final String? goalType;
+  final int? gradeLevel;
 
   const LessonUnitScreen({
     super.key,
     required this.conceptId,
+    this.goalType,
+    this.gradeLevel,
   });
 
   @override
@@ -31,9 +35,12 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
   // Guided Practice hint state
   bool _showHint = false;
 
+  late String _activeGoalType;
+
   @override
   void initState() {
     super.initState();
+    _activeGoalType = widget.goalType ?? "TERM_TEST";
     _tabController = TabController(length: 4, vsync: this);
     _loadLesson();
   }
@@ -44,9 +51,21 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
     super.dispose();
   }
 
+  void _switchGoal(String newGoal) {
+    if (_activeGoalType == newGoal) return;
+    setState(() {
+      _activeGoalType = newGoal;
+    });
+    _loadLesson();
+  }
+
   Future<void> _loadLesson() async {
     setState(() => _isLoading = true);
-    final data = await _service.getLesson(widget.conceptId);
+    final data = await _service.getLesson(
+      widget.conceptId,
+      goalType: _activeGoalType,
+      gradeLevel: widget.gradeLevel ?? 11,
+    );
     if (mounted) {
       setState(() {
         _lesson = data;
@@ -213,12 +232,168 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
   Widget _buildTheoryTab(String code, String textbook) {
     final theory = _lesson!["theory"] as String? ?? "";
     final formulas = (_lesson!["formulas"] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final competency = _lesson!["curriculum_competency"] as String? ?? "";
+    final descriptor = _lesson!["competency_descriptor"] as String? ?? "";
+    final pedMode = _lesson!["pedagogical_mode"] as Map<String, dynamic>?;
+    final prereqBridge = _lesson!["prerequisite_bridge"] as Map<String, dynamic>?;
+    final analogy = _lesson!["conceptual_analogy"] as String?;
+    final pitfall = _lesson!["exam_pitfall_warning"] as String?;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 0. Interactive Pedagogical Goal Mode Switcher
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _switchGoal("TERM_TEST"),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: _activeGoalType == "TERM_TEST" ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: _activeGoalType == "TERM_TEST"
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.flash_on, size: 16, color: Color(0xFFD97706)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Term-Test Cramming',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: _activeGoalType == "TERM_TEST"
+                                  ? const Color(0xFFD97706)
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _switchGoal("COMPREHENSIVE"),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: _activeGoalType == "COMPREHENSIVE" ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: _activeGoalType == "COMPREHENSIVE"
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.psychology, size: 16, color: AppTheme.primaryBlue),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Comprehensive',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: _activeGoalType == "COMPREHENSIVE"
+                                  ? AppTheme.primaryBlue
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Pedagogical Mode & Competency Banner
+          if (pedMode != null) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _lesson!["goal_type"] == "TERM_TEST"
+                      ? [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)]
+                      : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: _lesson!["goal_type"] == "TERM_TEST"
+                      ? const Color(0xFFFDE68A)
+                      : const Color(0xFFBFDBFE),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _lesson!["goal_type"] == "TERM_TEST"
+                          ? const Color(0xFFD97706)
+                          : AppTheme.primaryBlue,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      pedMode["badge"] ?? "⚡ Goal-Adaptive Mode",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      pedMode["focus"] ?? "",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        color: AppTheme.textPrimary,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Curriculum Code & NIE Descriptor Bar
           Row(
             children: [
               Container(
@@ -236,16 +411,128 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
                   ),
                 ),
               ),
+              if (competency.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.borderLight),
+                  ),
+                  child: Text(
+                    competency,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF475569),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   textbook,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textSecondary),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppTheme.textSecondary),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
+          if (descriptor.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              descriptor,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
+
+          // Prerequisite Bridge Card
+          if (prereqBridge != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.hub_outlined, color: AppTheme.primaryBlue, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Prerequisite Bridge (Linking Prior Knowledge)',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primaryBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppTheme.borderLight),
+                        ),
+                        child: Text(
+                          prereqBridge["source_concept"] ?? "Foundational Concept",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward, size: 14, color: AppTheme.textSecondary),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryLight,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          prereqBridge["target_concept"] ?? "Target Lesson",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primaryBlue,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    prereqBridge["explanation"] ?? "",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: const Color(0xFF334155),
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
 
           Text(
             'Conceptual Theory',
@@ -268,7 +555,95 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // Conceptual Analogy Card
+          if (analogy != null && analogy.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF9C3),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFDE047)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lightbulb_outline, color: Color(0xFFCA8A04), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Intuitive Analogy',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF854D0E),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          analogy,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: const Color(0xFF713F12),
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+
+          // Exam Pitfall Alert Card
+          if (pitfall != null && pitfall.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1F2),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFECDD3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'O/L Exam Trap Warning',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF9F1239),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          pitfall,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            color: const Color(0xFF881337),
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
 
           Text(
             'Authoritative Laws & Formulas',
@@ -332,8 +707,10 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
   Widget _buildWorkedExampleTab() {
     final worked = _lesson!["worked_example"] as Map<String, dynamic>? ?? {};
     final problem = worked["problem"] as String? ?? "";
+    final goalFocus = worked["goal_focus"] as String? ?? "";
     final steps = (worked["steps"] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final finalAnswer = worked["final_answer"] as String? ?? "";
+    final verification = worked["verification_check"] as String? ?? "";
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
@@ -362,6 +739,25 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
                         color: AppTheme.successGreen,
                       ),
                     ),
+                    if (goalFocus.isNotEmpty) ...[
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        ),
+                        child: Text(
+                          goalFocus,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.successGreen,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -386,8 +782,9 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
 
           ...steps.map((st) {
             final num = st["step_number"] ?? 1;
-            final desc = st["description"] ?? "";
+            final desc = st["action"] ?? st["description"] ?? "";
             final working = st["working"] ?? "";
+            final rationale = st["pedagogical_rationale"] as String?;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -445,6 +842,48 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
                       ),
                     ),
                   ),
+                  if (rationale != null && rationale.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7).withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.psychology, size: 16, color: Color(0xFFD97706)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'Pedagogical Rationale: ',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF92400E),
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: rationale,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11.5,
+                                      color: const Color(0xFF78350F),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
@@ -483,6 +922,49 @@ class _LessonUnitScreenState extends State<LessonUnitScreen> with SingleTickerPr
               ],
             ),
           ),
+
+          if (verification.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.verified, size: 20, color: Color(0xFF16A34A)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Curriculum Verification Check',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF15803D),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          verification,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            color: const Color(0xFF166534),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

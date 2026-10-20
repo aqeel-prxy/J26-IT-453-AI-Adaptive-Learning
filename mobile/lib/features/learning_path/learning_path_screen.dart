@@ -383,10 +383,17 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
 
           ElevatedButton.icon(
             onPressed: () {
+              final cid = targetConceptId.isNotEmpty ? targetConceptId : "10000000-0000-0000-0000-000000000002";
+              final currentGoal = _plan?['goal_type'] as String? ?? 'TERM_TEST';
+              final currentGrade = _plan?['grade_level'] as int? ?? 11;
               Navigator.pushNamed(
                 context,
                 AppRouter.lessonUnit,
-                arguments: targetConceptId.isNotEmpty ? targetConceptId : "10000000-0000-0000-0000-000000000002",
+                arguments: {
+                  'conceptId': cid,
+                  'goalType': currentGoal,
+                  'gradeLevel': currentGrade,
+                },
               );
             },
             style: ElevatedButton.styleFrom(
@@ -488,10 +495,16 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
               child: InkWell(
                 onTap: isClickable
                     ? () {
+                        final currentGoal = _plan?['goal_type'] as String? ?? 'TERM_TEST';
+                        final currentGrade = _plan?['grade_level'] as int? ?? 11;
                         Navigator.pushNamed(
                           context,
                           AppRouter.lessonUnit,
-                          arguments: conceptId,
+                          arguments: {
+                            'conceptId': conceptId,
+                            'goalType': currentGoal,
+                            'gradeLevel': currentGrade,
+                          },
                         );
                       }
                     : null,
