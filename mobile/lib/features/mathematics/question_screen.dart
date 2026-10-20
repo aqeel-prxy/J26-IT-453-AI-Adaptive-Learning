@@ -38,7 +38,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
     if (_isOcrLoading || _isSubmitting) return;
 
     setState(() {
-      _isOcrLoading = true;
       _ocrErrorMessage = null;
       _ocrNoticeMessage = null;
       _solverErrorMessage = null;
@@ -46,21 +45,24 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
     try {
       final img = useCamera
-          ? await takePhotoFromCamera()
+          ? await takePhotoFromCamera(context)
           : await pickImageFromGallery();
 
       if (img != null) {
-        setState(() => _pickedImage = img);
+        setState(() {
+          _pickedImage = img;
+          _isOcrLoading = true;
+        });
 
         // Run OCR with image data
         final ocrRes = await ErrorDiagnosisService.extractQuestionFromOCR(img.base64String);
 
         if (mounted) {
           if (ocrRes['success'] == true && ocrRes['extracted_question'] != null) {
-            final extracted = ocrRes['extracted_question'] as String;
+            final extracted = (ocrRes['extracted_question'] as String).trim();
             setState(() {
               _questionController.text = extracted;
-              _ocrNoticeMessage = 'Equation extracted via OCR. Please inspect and correct any symbol if needed before solving.';
+              _ocrNoticeMessage = 'Question identified via OCR: "$extracted". Review or edit the equation below, then click "Solve Step-by-Step".';
             });
           } else {
             setState(() {
@@ -127,7 +129,10 @@ class _QuestionScreenState extends State<QuestionScreen> {
       );
       return;
     }
+    await _solveQuestionAndNavigate(question);
+  }
 
+  Future<void> _solveQuestionAndNavigate(String question) async {
     if (_isSubmitting) return;
     setState(() {
       _isSubmitting = true;
@@ -153,6 +158,12 @@ class _QuestionScreenState extends State<QuestionScreen> {
         setState(() {
           _solverErrorMessage = res['error_message'] ??
               'This question could not be solved by the engine. Please enter a valid Grade 10-11 linear or quadratic algebra equation.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _solverErrorMessage = 'Failed to derive step-by-step solution ($e).';
         });
       }
     } finally {
@@ -277,7 +288,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 border: Border.all(color: AppTheme.borderLight),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -336,7 +347,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                             side: const BorderSide(color: AppTheme.primaryBlue),
                             padding: const EdgeInsets.symmetric(vertical: 11),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            backgroundColor: AppTheme.primaryLight.withOpacity(0.4),
+                            backgroundColor: AppTheme.primaryLight.withValues(alpha: 0.4),
                           ),
                         ),
                       ),
@@ -605,7 +616,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 border: Border.all(color: AppTheme.borderLight),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),

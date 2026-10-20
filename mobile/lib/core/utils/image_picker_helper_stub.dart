@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 
 class PickedImageData {
   final String fileName;
@@ -23,6 +24,6 @@ Future<PickedImageData?> pickImageFromGallery() async {
   return null;
 }
 
-Future<PickedImageData?> takePhotoFromCamera() async {
+Future<PickedImageData?> takePhotoFromCamera(BuildContext context) async {
   return null;
 }
