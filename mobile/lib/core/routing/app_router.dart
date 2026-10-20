@@ -51,9 +51,23 @@ class AppRouter {
       case diagnostic:
         return MaterialPageRoute(builder: (_) => const DiagnosticAssessmentScreen());
       case lessonUnit:
-        final conceptId = settings.arguments as String? ?? '10000000-0000-0000-0000-000000000002';
+        String conceptId = '10000000-0000-0000-0000-000000000002';
+        String? goalType;
+        int? gradeLevel;
+        if (settings.arguments is String) {
+          conceptId = settings.arguments as String;
+        } else if (settings.arguments is Map) {
+          final map = settings.arguments as Map;
+          conceptId = map['conceptId'] as String? ?? conceptId;
+          goalType = map['goalType'] as String?;
+          gradeLevel = map['gradeLevel'] as int?;
+        }
         return MaterialPageRoute(
-          builder: (_) => LessonUnitScreen(conceptId: conceptId),
+          builder: (_) => LessonUnitScreen(
+            conceptId: conceptId,
+            goalType: goalType,
+            gradeLevel: gradeLevel,
+          ),
         );
       case telemetry:
         return MaterialPageRoute(builder: (_) => const ResearchTelemetryScreen());
