@@ -370,6 +370,227 @@ LESSON_BANK: Dict[str, Dict[str, Any]] = {
             "correct_index": 0,
             "explanation": "log_2(x(x-2)) = 3 => x^2 - 2x = 2^3 = 8 => x^2 - 2x - 8 = 0 => (x-4)(x+2)=0. Since x > 2 for logarithms, x = 4."
         }
+    },
+
+    # =========================================================================
+    # GRADE 10 CURRICULUM LESSONS: Quadratic Equations (වර්ගජ සමීකරණ)
+    # Grounded in Sri Lankan Grade 10 National Mathematics Curriculum
+    # =========================================================================
+
+    "c1111111-1111-1111-1111-111111111111": {
+        "concept_id": "c1111111-1111-1111-1111-111111111111",
+        "code": "MATH-G10-QUAD-01",
+        "title": "Solving Quadratic Equations by Factorization",
+        "grade_level": 10,
+        "textbook_ref": "Grade 10 Mathematics Part I, Chapter 11, Section 11.1",
+        "estimated_duration_minutes": 20,
+        "theory": (
+            "A quadratic equation is an equality of the form ax^2 + bx + c = 0 (a != 0). When solved by factorization, "
+            "we apply the fundamental Zero-Product Principle: if the product of two real expressions is zero (A * B = 0), "
+            "then at least one factor must be zero (A = 0 or B = 0). Once ax^2 + bx + c is factored into (x - p)(x - q) = 0, "
+            "we separate it into two simple linear equations x - p = 0 and x - q = 0 to obtain the roots x = p and x = q. "
+            "Always ensure all terms are moved to the left side and equated to zero before factoring."
+        ),
+        "formulas": [
+            {"name": "Zero-Product Principle", "rule": "If A * B = 0, then A = 0 or B = 0"},
+            {"name": "Standard Equation Form", "rule": "ax^2 + bx + c = 0 (a != 0)"}
+        ],
+        "worked_example": {
+            "problem": "Solve for x: x^2 + 5x + 6 = 0",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "description": "Confirm the equation is in standard form with zero on the right-hand side",
+                    "working": "x^2 + 5x + 6 = 0 (Standard form satisfied)"
+                },
+                {
+                    "step_number": 2,
+                    "description": "Factor the quadratic trinomial into two linear binomials",
+                    "working": "Find numbers multiplying to 6 and adding to 5: 2 and 3 => (x + 2)(x + 3) = 0"
+                },
+                {
+                    "step_number": 3,
+                    "description": "Apply Zero-Product Principle and solve for x",
+                    "working": "x + 2 = 0 => x = -2; or x + 3 = 0 => x = -3"
+                }
+            ],
+            "final_answer": "x = -2 or x = -3"
+        },
+        "guided_practice": {
+            "problem": "Solve for x: x^2 - 4x - 21 = 0",
+            "hint": "Find two integers multiplying to -21 and adding to -4 (they are -7 and +3).",
+            "solution": "(x - 7)(x + 3) = 0 => x = 7 or x = -3"
+        },
+        "quiz": {
+            "question": "What are the solutions to the equation x(x - 5) = 0?",
+            "options": ["x = 0 or x = 5", "x = 5 only", "x = -5 or x = 0", "x = 25"],
+            "correct_index": 0,
+            "explanation": "Applying the zero-product rule: either x = 0 or x - 5 = 0 => x = 5. Solutions are x = 0 or x = 5."
+        }
+    },
+
+    "c1111111-1111-1111-1111-111111111002": {
+        "concept_id": "c1111111-1111-1111-1111-111111111002",
+        "code": "MATH-G10-QUAD-02",
+        "title": "Factoring and Solving by Splitting Middle Term",
+        "grade_level": 10,
+        "textbook_ref": "Grade 10 Mathematics Part I, Chapter 11, Section 11.2",
+        "estimated_duration_minutes": 15,
+        "theory": (
+            "A quadratic expression in one variable is an algebraic expression of the form ax^2 + bx + c, "
+            "where a, b, and c are real numbers and a != 0. Factoring a quadratic expression means rewriting it "
+            "as the product of two linear factors: (x + p)(x + q). In this factorization, the sum of p and q equals b "
+            "(p + q = b), and their product equals ac (p * q = ac). For expressions where a = 1, we find two integers "
+            "whose product is c and whose sum is b. When the middle term is absent (b = 0) and c is negative, we apply "
+            "the difference of two squares identity: a^2 - b^2 = (a - b)(a + b)."
+        ),
+        "formulas": [
+            {"name": "Standard Quadratic Form", "rule": "ax^2 + bx + c (a != 0)"},
+            {"name": "Middle-Term Splitting Rule", "rule": "Find p, q such that p + q = b and p * q = a * c"},
+            {"name": "Difference of Two Squares", "rule": "a^2 - b^2 = (a - b)(a + b)"}
+        ],
+        "worked_example": {
+            "problem": "Factorize the quadratic expression completely: x^2 + 7x + 12",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "description": "Identify coefficients a=1, b=7, c=12. Find two numbers multiplying to 12 and adding to 7.",
+                    "working": "Factors of 12: (1,12), (2,6), (3,4). Notice 3 + 4 = 7 and 3 * 4 = 12."
+                },
+                {
+                    "step_number": 2,
+                    "description": "Split the middle term 7x into 3x + 4x",
+                    "working": "x^2 + 7x + 12 = x^2 + 3x + 4x + 12"
+                },
+                {
+                    "step_number": 3,
+                    "description": "Group terms and extract common factors",
+                    "working": "= x(x + 3) + 4(x + 3) = (x + 3)(x + 4)"
+                }
+            ],
+            "final_answer": "(x + 3)(x + 4)"
+        },
+        "guided_practice": {
+            "problem": "Factorize: 2x^2 + 5x + 3",
+            "hint": "Here a * c = 2 * 3 = 6. Find two numbers that multiply to 6 and add to 5 (they are 2 and 3).",
+            "solution": "2x^2 + 2x + 3x + 3 = 2x(x + 1) + 3(x + 1) = (2x + 3)(x + 1)"
+        },
+        "quiz": {
+            "question": "What are the factors of x^2 - 9?",
+            "options": ["(x - 3)(x + 3)", "(x - 9)(x + 1)", "(x - 3)^2", "(x + 9)(x - 1)"],
+            "correct_index": 0,
+            "explanation": "Using the difference of two squares identity a^2 - b^2 = (a - b)(a + b), x^2 - 3^2 = (x - 3)(x + 3)."
+        }
+    },
+
+    "c1111111-1111-1111-1111-111111111003": {
+        "concept_id": "c1111111-1111-1111-1111-111111111003",
+        "code": "MATH-G10-QUAD-03",
+        "title": "Solving by Completing the Square",
+        "grade_level": 10,
+        "textbook_ref": "Grade 10 Mathematics Part I, Chapter 11, Section 11.3",
+        "estimated_duration_minutes": 25,
+        "theory": (
+            "Not every quadratic equation can be easily factored with integers. The method of completing the square "
+            "transforms any quadratic equation into a perfect square format: (x + p)^2 = q, from which the solutions "
+            "are extracted by taking the square root of both sides. For an equation x^2 + bx = -c, the term required to "
+            "complete the square on the left is always (b / 2)^2. Adding (b / 2)^2 to both sides produces the perfect "
+            "square trinomial (x + b/2)^2 on the left side."
+        ),
+        "formulas": [
+            {"name": "Perfect Square Expansion", "rule": "(x + d)^2 = x^2 + 2dx + d^2"},
+            {"name": "Completing Square Term", "rule": "Add (b / 2)^2 to both sides"},
+            {"name": "Square Root Extraction", "rule": "x + b/2 = +- sqrt(d)"}
+        ],
+        "worked_example": {
+            "problem": "Solve for x by completing the square: x^2 + 6x - 7 = 0",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "description": "Move the constant term to the right-hand side",
+                    "working": "x^2 + 6x = 7"
+                },
+                {
+                    "step_number": 2,
+                    "description": "Calculate (b / 2)^2 and add it to both sides",
+                    "working": "(6 / 2)^2 = 3^2 = 9. So: x^2 + 6x + 9 = 7 + 9 = 16"
+                },
+                {
+                    "step_number": 3,
+                    "description": "Rewrite left side as perfect square and take square root",
+                    "working": "(x + 3)^2 = 16 => x + 3 = +- 4"
+                },
+                {
+                    "step_number": 4,
+                    "description": "Solve for x",
+                    "working": "x = -3 + 4 = 1; x = -3 - 4 = -7"
+                }
+            ],
+            "final_answer": "x = 1 or x = -7"
+        },
+        "guided_practice": {
+            "problem": "What number must be added to x^2 - 10x to make it a perfect square trinomial?",
+            "hint": "Divide the coefficient of x by 2 (-10 / 2 = -5) and square the result.",
+            "solution": "(-10 / 2)^2 = (-5)^2 = 25"
+        },
+        "quiz": {
+            "question": "Solve (x - 2)^2 = 25 for x.",
+            "options": ["x = 7 or x = -3", "x = 7 only", "x = 3 or x = -7", "x = 27"],
+            "correct_index": 0,
+            "explanation": "Taking square root of both sides: x - 2 = +- 5. Thus x = 2 + 5 = 7 or x = 2 - 5 = -3."
+        }
+    },
+
+    "c1111111-1111-1111-1111-111111111004": {
+        "concept_id": "c1111111-1111-1111-1111-111111111004",
+        "code": "MATH-G10-QUAD-04",
+        "title": "The Quadratic Formula & Word Problems",
+        "grade_level": 10,
+        "textbook_ref": "Grade 10 Mathematics Part I, Chapter 11, Section 11.4",
+        "estimated_duration_minutes": 25,
+        "theory": (
+            "The general quadratic formula gives the exact solutions for any quadratic equation ax^2 + bx + c = 0 (a != 0): "
+            "x = (-b +- sqrt(b^2 - 4ac)) / (2a). The radicand b^2 - 4ac is called the discriminant (Delta). "
+            "When Delta > 0, the equation has two distinct real roots; when Delta = 0, exactly one real root; and when Delta < 0, "
+            "no real roots exist. Quadratic equations frequently arise in geometry to determine dimensions of areas, and in physics "
+            "to calculate projectile trajectory and flight time."
+        ),
+        "formulas": [
+            {"name": "Quadratic Formula", "rule": "x = (-b +- sqrt(b^2 - 4ac)) / (2a)"},
+            {"name": "Discriminant (Delta)", "rule": "Delta = b^2 - 4ac"}
+        ],
+        "worked_example": {
+            "problem": "Solve for x using the quadratic formula: 2x^2 + 5x - 3 = 0",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "description": "Identify coefficients a, b, and c",
+                    "working": "a = 2, b = 5, c = -3"
+                },
+                {
+                    "step_number": 2,
+                    "description": "Compute the discriminant Delta = b^2 - 4ac",
+                    "working": "Delta = 5^2 - 4(2)(-3) = 25 + 24 = 49 (sqrt(49) = 7)"
+                },
+                {
+                    "step_number": 3,
+                    "description": "Substitute into the formula and evaluate both roots",
+                    "working": "x = (-5 +- 7) / (2 * 2) => x = (-5 + 7)/4 = 2/4 = 0.5; x = (-5 - 7)/4 = -12/4 = -3"
+                }
+            ],
+            "final_answer": "x = 0.5 or x = -3"
+        },
+        "guided_practice": {
+            "problem": "A rectangular garden has length (x + 3) meters and width x meters. If the area is 40 m^2, find x.",
+            "hint": "Area = length * width => x(x + 3) = 40 => x^2 + 3x - 40 = 0. Solve for positive x.",
+            "solution": "x^2 + 3x - 40 = 0 => (x + 8)(x - 5) = 0. Since dimension must be positive, x = 5 meters."
+        },
+        "quiz": {
+            "question": "What is the discriminant of the quadratic equation x^2 + 4x + 4 = 0?",
+            "options": ["0 (one repeated root)", "16", "32", "-8"],
+            "correct_index": 0,
+            "explanation": "Delta = b^2 - 4ac = 4^2 - 4(1)(4) = 16 - 16 = 0. The equation has exactly one real repeated root (x = -2)."
+        }
     }
 }
 

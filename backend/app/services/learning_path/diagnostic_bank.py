@@ -166,20 +166,86 @@ DIAGNOSTIC_QUESTION_BANK: List[Dict[str, Any]] = [
         "explanation": "Convert to index form: x + 3 = 2^4 = 16. Therefore, x = 16 - 3 = 13.",
         "difficulty": 0.6,
         "is_prerequisite_check": False
+    },
+
+    # -------------------------------------------------------------------------
+    # Grade 10: Solving Quadratic Equations by Factorization (MATH-G10-QUAD-01)
+    # -------------------------------------------------------------------------
+    {
+        "id": "q2000000-0000-0000-0000-000000000001",
+        "concept_id": "c1111111-1111-1111-1111-111111111111",
+        "concept_code": "MATH-G10-QUAD-01",
+        "question_text": "Solve for x: x^2 - 7x + 10 = 0",
+        "options": ["x = 2 or x = 5", "x = -2 or x = -5", "x = 1 or x = 10", "x = 7 or x = 10"],
+        "correct_answer": "x = 2 or x = 5",
+        "explanation": "(x - 2)(x - 5) = 0 => x = 2 or x = 5.",
+        "difficulty": 0.35,
+        "is_prerequisite_check": True
+    },
+
+    # -------------------------------------------------------------------------
+    # Grade 10: Factoring and Solving by Splitting Middle Term (MATH-G10-QUAD-02)
+    # -------------------------------------------------------------------------
+    {
+        "id": "q2000000-0000-0000-0000-000000000002",
+        "concept_id": "c1111111-1111-1111-1111-111111111002",
+        "concept_code": "MATH-G10-QUAD-02",
+        "question_text": "Factorize completely: x^2 + 8x + 15",
+        "options": ["(x + 3)(x + 5)", "(x + 1)(x + 15)", "(x - 3)(x - 5)", "(x + 8)(x + 15)"],
+        "correct_answer": "(x + 3)(x + 5)",
+        "explanation": "3 * 5 = 15 and 3 + 5 = 8. So the factors are (x + 3)(x + 5).",
+        "difficulty": 0.4,
+        "is_prerequisite_check": True
+    },
+
+    # -------------------------------------------------------------------------
+    # Grade 10: Solving by Completing the Square (MATH-G10-QUAD-03)
+    # -------------------------------------------------------------------------
+    {
+        "id": "q2000000-0000-0000-0000-000000000003",
+        "concept_id": "c1111111-1111-1111-1111-111111111003",
+        "concept_code": "MATH-G10-QUAD-03",
+        "question_text": "What number must be added to x^2 + 6x to make it a perfect square?",
+        "options": ["9", "36", "6", "3"],
+        "correct_answer": "9",
+        "explanation": "(6 / 2)^2 = 3^2 = 9.",
+        "difficulty": 0.45,
+        "is_prerequisite_check": False
+    },
+
+    # -------------------------------------------------------------------------
+    # Grade 10: The Quadratic Formula & Word Problems (MATH-G10-QUAD-04)
+    # -------------------------------------------------------------------------
+    {
+        "id": "q2000000-0000-0000-0000-000000000004",
+        "concept_id": "c1111111-1111-1111-1111-111111111004",
+        "concept_code": "MATH-G10-QUAD-04",
+        "question_text": "For the quadratic equation 3x^2 - 5x + 1 = 0, what is the value of the discriminant b^2 - 4ac?",
+        "options": ["13", "37", "-13", "7"],
+        "correct_answer": "13",
+        "explanation": "b^2 - 4ac = (-5)^2 - 4(3)(1) = 25 - 12 = 13.",
+        "difficulty": 0.55,
+        "is_prerequisite_check": False
     }
 ]
 
 
-def get_diagnostic_questions_for_topic(topic: str = "Indices and Logarithms") -> List[Dict[str, Any]]:
-    """Returns all diagnostic questions for the specified topic."""
-    return DIAGNOSTIC_QUESTION_BANK
+def get_diagnostic_questions_for_topic(topic: str = "Indices and Logarithms", grade_level: int = 11) -> List[Dict[str, Any]]:
+    """Returns all diagnostic questions for the specified topic and grade."""
+    clean = (topic or "").lower()
+    if grade_level == 10 or "quad" in clean:
+        return [q for q in DIAGNOSTIC_QUESTION_BANK if "QUAD" in q.get("concept_code", "")]
+    return [q for q in DIAGNOSTIC_QUESTION_BANK if "IND" in q.get("concept_code", "") or "LOG" in q.get("concept_code", "")]
 
 
-def get_prerequisite_screening_questions() -> List[Dict[str, Any]]:
+def get_prerequisite_screening_questions(grade_level: int = 11) -> List[Dict[str, Any]]:
     """Returns fundamental diagnostic questions designed to screen for prerequisite gaps."""
-    return [q for q in DIAGNOSTIC_QUESTION_BANK if q.get("is_prerequisite_check")]
+    if grade_level == 10:
+        return [q for q in DIAGNOSTIC_QUESTION_BANK if q.get("is_prerequisite_check") and "QUAD" in q.get("concept_code", "")]
+    return [q for q in DIAGNOSTIC_QUESTION_BANK if q.get("is_prerequisite_check") and ("IND" in q.get("concept_code", "") or "LOG" in q.get("concept_code", ""))]
 
 
 def get_questions_for_concept(concept_id: str) -> List[Dict[str, Any]]:
     """Returns questions mapped to a specific concept node."""
     return [q for q in DIAGNOSTIC_QUESTION_BANK if q["concept_id"] == concept_id]
+

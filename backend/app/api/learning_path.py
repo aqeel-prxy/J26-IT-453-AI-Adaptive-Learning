@@ -20,8 +20,12 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.services.learning_path.planner_service import LearningPathService
-from app.services.learning_path.curriculum_graph import INDICES_LOGARITHMS_DAG
-from app.services.learning_path.diagnostic_bank import DIAGNOSTIC_QUESTION_BANK
+from app.services.learning_path.curriculum_graph import (
+    INDICES_LOGARITHMS_DAG, QUADRATIC_EQUATIONS_DAG, get_curriculum_dag as resolve_curriculum_dag
+)
+from app.services.learning_path.diagnostic_bank import (
+    DIAGNOSTIC_QUESTION_BANK, get_diagnostic_questions_for_topic
+)
 from app.services.learning_path.lesson_bank import get_lesson_for_concept
 from app.services.learning_path.readiness_predictor import METRICS_PATH
 from app.schemas.learning_path import (
@@ -37,17 +41,13 @@ planner_service = LearningPathService()
 
 
 @router.get("/curriculum/{topic}", summary="Retrieve Curriculum Prerequisite DAG")
-def get_curriculum_dag(topic: str):
+def get_curriculum_dag(topic: str, grade_level: Optional[int] = Query(None)):
     """
     Returns the curriculum Directed Acyclic Graph (DAG) for a topic
-    (e.g., 'indices-and-logarithms' or 'Indices and Logarithms'),
-    including all concept nodes and prerequisite edges.
+    (e.g., 'quadratic-equations', 'indices-and-logarithms'),
+    including all concept nodes and prerequisite edges for Grade 10 or Grade 11.
     """
-    clean_topic = topic.replace("-", " ").lower()
-    if "index" in clean_topic or "log" in clean_topic:
-        dag = INDICES_LOGARITHMS_DAG
-    else:
-        dag = INDICES_LOGARITHMS_DAG
+    dag = resolve_curriculum_dag(topic_name=topic, grade_level=grade_level or 11)
 
     return {
         "topic_category": dag.topic_name,
@@ -70,10 +70,16 @@ def get_curriculum_dag(topic: str):
 
 
 @router.get("/diagnostic/questions", summary="Get Diagnostic Question Bank")
-def get_diagnostic_questions(concept_id: Optional[str] = Query(None)):
-    """Returns curated diagnostic questions mapped to curriculum DAG nodes."""
+def get_diagnostic_questions(
+    concept_id: Optional[str] = Query(None),
+    grade_level: Optional[int] = Query(None),
+    topic: Optional[str] = Query(None)
+):
+    """Returns curated diagnostic questions mapped to curriculum DAG nodes for Grade 10 or 11."""
     if concept_id:
         questions = [q for q in DIAGNOSTIC_QUESTION_BANK if q["concept_id"] == concept_id]
+    elif grade_level or topic:
+        questions = get_diagnostic_questions_for_topic(topic=topic or "Indices and Logarithms", grade_level=grade_level or 11)
     else:
         questions = DIAGNOSTIC_QUESTION_BANK
 
@@ -97,6 +103,7 @@ def submit_diagnostic_assessment(
         student_id=str(payload.student_id),
         topic_category=payload.topic_category,
         goal_type=payload.goal_type,
+        grade_level=payload.grade_level or 11,
         responses=dict_responses,
         db=db
     )
@@ -110,7 +117,7 @@ def create_learning_plan(
 ):
     """
     Generates a goal-aware (Term-Test vs Comprehensive) and prerequisite-adaptive
-    learning pathway for a student.
+    learning pathway for a student in Grade 10 or Grade 11.
     """
     plan = planner_service.generate_path(
         student_id=str(payload.student_id),
@@ -118,6 +125,7 @@ def create_learning_plan(
         goal_type=payload.goal_type,
         target_date=payload.target_date,
         available_daily_minutes=payload.available_daily_minutes,
+        grade_level=payload.grade_level or 11,
         db=db
     )
     return plan

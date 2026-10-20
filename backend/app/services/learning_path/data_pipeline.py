@@ -24,12 +24,23 @@ DEV_DATASET_HEADER = """# ======================================================
 # ==============================================================================
 """
 
+# Pedagogical Readiness Benchmark:
+# In the Sri Lankan G.C.E. Ordinary Level evaluation framework and Bloom's mastery learning,
+# >= 75% represents the standard distinction ('A' pass) threshold demonstrating stable competency.
+READINESS_MASTERY_THRESHOLD = 0.75
+
 FEATURE_COLUMNS = [
     "concept_order_index",
     "prerequisite_avg_accuracy",
     "past_overall_accuracy",
     "recent_attempt_count",
     "avg_response_time_ms",
+]
+
+# Extended feature set integrating Component 2 (Jayasinghe) Latent Knowledge Tracing mastery vector
+EXTENDED_FEATURE_COLUMNS = FEATURE_COLUMNS + [
+    "c2_mastery_probability",
+    "c2_prerequisite_mastery_mean",
 ]
 
 TARGET_COLUMN = "is_ready"
@@ -44,6 +55,7 @@ def generate_development_dataset(
     Generates a development-only dataset for pipeline verification.
     Simulates student responses across the Grade 11 Indices and Logarithms curriculum DAG.
     Grounded in pedagogical reality: prerequisite competence strongly informs target readiness.
+    Includes simulated Component 2 (Jayasinghe) latent knowledge tracing signals for feature fusion.
     """
     random.seed(random_seed)
     np.random.seed(random_seed)
@@ -79,20 +91,25 @@ def generate_development_dataset(
                 5000, 45000
             ))
 
+            # Component 2 simulated latent mastery (BKT/DKT estimate from Jayasinghe's component)
+            c2_target_mastery = float(np.clip(latent_ability * 0.85 + (prereq_acc * 0.15) + random.uniform(-0.08, 0.08), 0.05, 0.98))
+            c2_prereq_mastery_mean = float(np.clip(prereq_acc + random.uniform(-0.05, 0.05), 0.05, 0.98))
+
             # 3. Target Readiness Probability (Pedagogical logistic formula)
-            # Higher prerequisite accuracy and latent ability boost readiness;
+            # Higher prerequisite accuracy, latent ability, and C2 mastery boost readiness;
             # Higher curriculum order requires stronger prerequisite grounding.
             order_penalty = (node.order_index - 1) * 0.12
             logit = (
                 2.8 * prereq_acc
                 + 1.5 * past_overall_acc
+                + 1.2 * c2_target_mastery
                 - 1.2 * order_penalty
                 - 0.00003 * response_time_ms
-                - 0.8
+                - 1.2
             )
             prob_ready = 1.0 / (1.0 + np.exp(-logit))
 
-            # Binary outcome sampled from probability
+            # Binary outcome sampled from probability (ground truth quiz achievement >= 75%)
             is_ready = 1 if random.random() < prob_ready else 0
 
             # Store attempt record
@@ -105,6 +122,8 @@ def generate_development_dataset(
                 "past_overall_accuracy": round(float(past_overall_acc), 4),
                 "recent_attempt_count": attempt_count,
                 "avg_response_time_ms": round(response_time_ms, 1),
+                "c2_mastery_probability": round(c2_target_mastery, 4),
+                "c2_prerequisite_mastery_mean": round(c2_prereq_mastery_mean, 4),
                 "is_ready": is_ready
             })
 

@@ -88,7 +88,19 @@ class TopicsScreen extends StatelessWidget {
             ),
             child: InkWell(
               onTap: () {
-                Navigator.pushNamed(context, item['route'] as String);
+                if (item['title'] == 'Quadratic Equations') {
+                  Navigator.pushNamed(context, AppRouter.learningGoal, arguments: {
+                    'grade': 10,
+                    'topic': 'Quadratic Equations',
+                  });
+                } else if (item['title'] == 'Indices and Logarithms') {
+                  Navigator.pushNamed(context, AppRouter.learningGoal, arguments: {
+                    'grade': 11,
+                    'topic': 'Indices and Logarithms',
+                  });
+                } else {
+                  Navigator.pushNamed(context, item['route'] as String);
+                }
               },
               borderRadius: BorderRadius.circular(18),
               child: Padding(
@@ -195,7 +207,7 @@ class TopicsScreen extends StatelessWidget {
                         size: 18,
                       ),
                       label: Text(
-                        isFeatured ? 'Open AI Learning Path (Aqeel)' : 'Explore Concepts',
+                        isFeatured ? 'Open AI Learning Pathway' : 'Explore Concepts',
                         style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
                       ),
                     ),

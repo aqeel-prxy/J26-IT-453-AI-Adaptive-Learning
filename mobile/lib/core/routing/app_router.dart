@@ -11,6 +11,8 @@ import '../../features/mathematics/topics_screen.dart';
 import '../../features/mathematics/concept_screen.dart';
 import '../../features/mathematics/question_screen.dart';
 import '../../features/mathematics/answer_submission_screen.dart';
+import '../../features/learner_profiling/learner_profiling_screen.dart';
+import '../../features/gamification/gamification_hub_screen.dart';
 
 class AppRouter {
   static const String splash = '/';
@@ -25,6 +27,8 @@ class AppRouter {
   static const String concept = '/concept';
   static const String question = '/question';
   static const String submit = '/submit';
+  static const String learnerProfiling = '/learner-profiling';
+  static const String gamification = '/gamification';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -35,7 +39,13 @@ class AppRouter {
       case dashboard:
         return MaterialPageRoute(builder: (_) => const DashboardScreen());
       case learningGoal:
-        return MaterialPageRoute(builder: (_) => const LearningGoalScreen());
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (_) => LearningGoalScreen(
+            initialGrade: args?['grade'] as int?,
+            initialTopic: args?['topic'] as String?,
+          ),
+        );
       case learningPath:
         return MaterialPageRoute(builder: (_) => const LearningPathScreen());
       case diagnostic:
@@ -77,6 +87,10 @@ class AppRouter {
             initialData: initialData,
           ),
         );
+      case learnerProfiling:
+        return MaterialPageRoute(builder: (_) => const LearnerProfilingScreen());
+      case gamification:
+        return MaterialPageRoute(builder: (_) => const GamificationHubScreen());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

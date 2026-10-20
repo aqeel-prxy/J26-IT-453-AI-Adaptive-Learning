@@ -63,9 +63,38 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Research Telemetry & Baselines'), findsOneWidget);
-    expect(find.text('Component 1 Research Telemetry'), findsOneWidget);
+    expect(find.text('Adaptive Engine Telemetry & System Analytics'), findsOneWidget);
     expect(find.text('ML Readiness F1'), findsOneWidget);
     expect(find.text('Prereq Integrity'), findsOneWidget);
     expect(find.text('Comparative Baseline Evaluation (REQ-C1-08)'), findsOneWidget);
+  });
+
+  testWidgets('LearningGoalScreen allows toggling between Grade 10 and Grade 11', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestWidget(const LearningGoalScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1. Select Grade Level'), findsOneWidget);
+    expect(find.text('Grade 10'), findsOneWidget);
+    expect(find.text('Grade 11'), findsOneWidget);
+    expect(find.text('Indices and Logarithms'), findsOneWidget);
+
+    // Tap Grade 10
+    await tester.tap(find.text('Grade 10'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quadratic Equations'), findsOneWidget);
+    expect(find.textContaining('වර්ගජ සමීකරණ'), findsWidgets);
+    expect(find.textContaining('4 Core Concepts in DAG'), findsOneWidget);
+  });
+
+  testWidgets('LessonUnitScreen renders Grade 10 Quadratic Equations theory and formulas', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestWidget(
+      const LessonUnitScreen(conceptId: 'c1111111-1111-1111-1111-111111111111'),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Solving Quadratic Equations by Factorization'), findsOneWidget);
+    expect(find.text('📖 Theory & Formulas'), findsOneWidget);
+    expect(find.text('Zero-Product Rule'), findsOneWidget);
   });
 }

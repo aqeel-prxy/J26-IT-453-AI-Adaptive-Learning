@@ -176,7 +176,7 @@ def test_error_diagnosis_student_working():
 # 9. Similar question retry and attempt persistence
 def test_similar_question_retry_and_persistence():
     # Get similar question
-    res_sim = client.get("/api/v1/error/similar-question?current_question=2x² + 5x - 3 = 0")
+    res_sim = client.get("/api/v1/error/similar-question", params={"current_question": "2x² + 5x - 3 = 0"})
     assert res_sim.status_code == 200
     data_sim = res_sim.json()
     assert data_sim["topic"] == "Quadratic Equations"

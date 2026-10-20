@@ -33,6 +33,7 @@ class PathwayNode(BaseModel):
 class PlanCreateRequest(BaseModel):
     student_id: UUID
     topic_category: str = "Indices and Logarithms"
+    grade_level: Optional[int] = Field(11, description="Grade 10 or Grade 11")
     goal_type: str = Field("COMPREHENSIVE", description="TERM_TEST or COMPREHENSIVE")
     target_date: Optional[date] = None
     available_daily_minutes: int = Field(30, ge=10, le=180)
@@ -42,6 +43,7 @@ class PlanResponse(BaseModel):
     plan_id: str
     student_id: str
     topic_category: str
+    grade_level: Optional[int] = 11
     goal_type: str
     target_date: Optional[str] = None
     available_daily_minutes: int
@@ -62,6 +64,7 @@ class DiagnosticResponseItem(BaseModel):
 class DiagnosticSubmitRequest(BaseModel):
     student_id: UUID
     topic_category: str = "Indices and Logarithms"
+    grade_level: Optional[int] = 11
     goal_type: str = "COMPREHENSIVE"
     responses: List[DiagnosticResponseItem]
 

@@ -117,7 +117,7 @@ class _AnswerSubmissionScreenState extends State<AnswerSubmissionScreen> {
           _retryResultCorrect = isCorrect;
           _retryFeedback = isCorrect
               ? 'Excellent! Your retry solution is completely correct.'
-              : 'Incorrect: ${checkRes['explanation_text'] ?? "Expected answer: ${_similarQuestionData!['expected_answer'] ?? ''}"}';
+              : 'Incorrect: ${checkRes['explanation_text'] ?? 'Expected answer: ${_similarQuestionData!['expected_answer'] ?? ''}'}';
         });
       }
     } finally {
@@ -135,13 +135,47 @@ class _AnswerSubmissionScreenState extends State<AnswerSubmissionScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(isCheckWorking ? 'Diagnosis & Verification' : 'Verified Step-by-Step Solution'),
-        centerTitle: true,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isCheckWorking ? 'Diagnosis & Verification' : 'Verified Step-by-Step Solution',
+              style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800),
+            ),
+            Text(
+              'Mathematical Solution Analysis & Error Detection',
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.textSecondary),
+            ),
+          ],
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    isCheckWorking
+                        ? 'Analyzing Step-by-Step Mathematical Solution...'
+                        : 'Generating Verified Derivation...',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Classifying steps against mathematical solver and taxonomy',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textMuted),
+                  ),
+                ],
+              ),
+            )
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(18.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -333,13 +367,13 @@ class _AnswerSubmissionScreenState extends State<AnswerSubmissionScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Numbered Sequence of Steps
                   Text(
                     'Step-by-Step Mathematical Derivation:',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: AppTheme.textPrimary,
                     ),
@@ -432,7 +466,7 @@ class _AnswerSubmissionScreenState extends State<AnswerSubmissionScreen> {
                     ),
                   const SizedBox(height: 24),
 
-                  // Similar Practice Question Card (Requirement 5)
+                  // Similar Practice Question Card
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -508,7 +542,7 @@ class _AnswerSubmissionScreenState extends State<AnswerSubmissionScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Difficulty: ${_similarQuestionData!['difficulty']}',
+                                      'Difficulty: ${_similarQuestionData!['difficulty'] ?? 'STANDARD'}',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -578,6 +612,56 @@ class _AnswerSubmissionScreenState extends State<AnswerSubmissionScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // Direct Integration with Pathway Engine Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.hub, color: AppTheme.primaryBlue, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Integration with Adaptive Pathway Engine',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.primaryBlue,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Diagnostic events trigger the Adaptive Pathway Engine to dynamically schedule targeted remedial prerequisite nodes into the student\'s active learning trajectory.',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pushNamed(context, AppRouter.learningPath);
+                            },
+                            icon: const Icon(Icons.alt_route, size: 18),
+                            label: const Text('Review Remedial Pathway'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryBlue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 24),
 
                   // Navigation Actions
@@ -614,6 +698,7 @@ class _AnswerSubmissionScreenState extends State<AnswerSubmissionScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
