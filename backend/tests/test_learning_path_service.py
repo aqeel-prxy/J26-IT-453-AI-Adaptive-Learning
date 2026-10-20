@@ -290,3 +290,38 @@ def test_api_get_baselines_and_telemetry(client):
     telem_resp = client.get("/api/v1/learning-path/telemetry")
     assert telem_resp.status_code == 200
     assert "selected_model" in telem_resp.json()
+
+
+def test_grade_10_curriculum_and_plan_api(client):
+    # Test Grade 10 curriculum DAG endpoint
+    dag_resp = client.get("/api/v1/learning-path/curriculum/quadratic-equations?grade_level=10")
+    assert dag_resp.status_code == 200
+    dag_data = dag_resp.json()
+    assert dag_data["grade_level"] == 10
+    assert dag_data["topic_category"] == "Quadratic Equations"
+    assert len(dag_data["concepts"]) == 4
+
+    # Test Grade 10 lesson retrieval
+    lesson_resp = client.get("/api/v1/learning-path/lesson/c1111111-1111-1111-1111-111111111111")
+    assert lesson_resp.status_code == 200
+    lesson = lesson_resp.json()
+    assert lesson["grade_level"] == 10
+    assert lesson["code"] == "MATH-G10-QUAD-01"
+    assert "Zero-Product" in lesson["theory"] or "Quadratic" in lesson["theory"]
+
+    # Test Grade 10 Plan Creation
+    plan_payload = {
+        "student_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        "topic_category": "Quadratic Equations",
+        "grade_level": 10,
+        "goal_type": "TERM_TEST",
+        "available_daily_minutes": 30
+    }
+    plan_resp = client.post("/api/v1/learning-path/plan", json=plan_payload)
+    assert plan_resp.status_code == 200
+    plan_data = plan_resp.json()
+    assert plan_data["grade_level"] == 10
+    assert plan_data["topic_category"] == "Quadratic Equations"
+    assert len(plan_data["pathway_nodes"]) == 4
+    assert plan_data["pathway_nodes"][0]["code"] == "MATH-G10-QUAD-01"
+

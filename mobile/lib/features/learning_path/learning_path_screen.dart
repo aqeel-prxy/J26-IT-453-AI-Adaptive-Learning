@@ -47,6 +47,9 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
     final goalType = _plan!['goal_type'] as String? ?? 'COMPREHENSIVE';
     final targetConceptId = _plan!['current_concept_id'] as String? ?? '';
     final dailyMinutes = _plan!['available_daily_minutes'] as int? ?? 30;
+    final gradeLevel = _plan!['grade_level'] as int? ?? 11;
+    final topicCategory = _plan!['topic_category'] as String? ?? 'Indices and Logarithms';
+    final isG10 = gradeLevel == 10 || topicCategory.toLowerCase().contains('quad');
 
     // Calculate overall stats
     final masteredCount = nodes.where((n) => n['status'] == 'MASTERED').length;
@@ -79,7 +82,15 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Topic & Goal Header Banner
-              _buildTopicHeaderCard(goalType, dailyMinutes, completionPct, masteredCount, totalNodes),
+              _buildTopicHeaderCard(
+                goalType,
+                dailyMinutes,
+                completionPct,
+                masteredCount,
+                totalNodes,
+                gradeLevel,
+                isG10,
+              ),
               const SizedBox(height: 16),
 
               // 2. AI Recommended Next Action Card (REQ-C1-05)
@@ -102,7 +113,7 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
                         ),
                       ),
                       Text(
-                        'Topological Dependency Roadmap • Sri Lankan G11',
+                        'Topological Dependency Roadmap • Sri Lankan G$gradeLevel',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
@@ -158,7 +169,12 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
     double completionPct,
     int masteredCount,
     int totalNodes,
+    int gradeLevel,
+    bool isG10,
   ) {
+    final topicTitle = isG10 ? 'Quadratic Equations' : 'Indices & Logarithms';
+    final topicSinhala = isG10 ? 'වර්ගජ සමීකරණ' : 'දර්ශක හා ලඝුගණක';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -185,7 +201,7 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'Grade 11 Mathematics',
+                  'Grade $gradeLevel Mathematics',
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontSize: 11,
@@ -212,7 +228,7 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Indices & Logarithms',
+            topicTitle,
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white,
               fontSize: 22,
@@ -220,7 +236,7 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
             ),
           ),
           Text(
-            'දර්ශක හා ලඝුගණක • 7 Concepts in Prerequisite DAG',
+            '$topicSinhala • $totalNodes Concepts in Prerequisite DAG',
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white70,
               fontSize: 13,
@@ -367,10 +383,17 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
 
           ElevatedButton.icon(
             onPressed: () {
+              final cid = targetConceptId.isNotEmpty ? targetConceptId : "10000000-0000-0000-0000-000000000002";
+              final currentGoal = _plan?['goal_type'] as String? ?? 'TERM_TEST';
+              final currentGrade = _plan?['grade_level'] as int? ?? 11;
               Navigator.pushNamed(
                 context,
                 AppRouter.lessonUnit,
-                arguments: targetConceptId.isNotEmpty ? targetConceptId : "10000000-0000-0000-0000-000000000002",
+                arguments: {
+                  'conceptId': cid,
+                  'goalType': currentGoal,
+                  'gradeLevel': currentGrade,
+                },
               );
             },
             style: ElevatedButton.styleFrom(
@@ -472,10 +495,16 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
               child: InkWell(
                 onTap: isClickable
                     ? () {
+                        final currentGoal = _plan?['goal_type'] as String? ?? 'TERM_TEST';
+                        final currentGrade = _plan?['grade_level'] as int? ?? 11;
                         Navigator.pushNamed(
                           context,
                           AppRouter.lessonUnit,
-                          arguments: conceptId,
+                          arguments: {
+                            'conceptId': conceptId,
+                            'goalType': currentGoal,
+                            'gradeLevel': currentGrade,
+                          },
                         );
                       }
                     : null,

@@ -12,7 +12,7 @@ class AdaptiveLearningApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'J26-IT-453 Adaptive Learning',
+      title: 'AdaptiveMath AI',
       theme: AppTheme.lightTheme,
       initialRoute: AppRouter.splash,
       onGenerateRoute: AppRouter.generateRoute,

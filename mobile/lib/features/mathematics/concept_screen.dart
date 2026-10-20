@@ -70,7 +70,7 @@ class ConceptScreen extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   Text(
-                    'Learner Mastery Calibration (Component 2)',
+                    'Learner Mastery & Cognitive Calibration',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,

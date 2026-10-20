@@ -18,16 +18,6 @@ def seed_database(db: Session):
     if db.query(Concept).first() is not None:
         return
 
-    # 1. Create Grade 10 Math Concepts
-    quad_concept = Concept(
-        id=uuid.UUID("c1111111-1111-1111-1111-111111111111"),
-        topic_category="Quadratic Equations",
-        code="MATH-G10-QUAD-01",
-        title="Solving Quadratic Equations by Factorization",
-        prerequisite_concept_ids=[],
-        grade_level=10
-    )
-    
     perim_concept = Concept(
         id=uuid.UUID("c2222222-2222-2222-2222-222222222222"),
         topic_category="Perimeter and Area of Plane Figures",
@@ -37,7 +27,20 @@ def seed_database(db: Session):
         grade_level=10
     )
 
-    concept_objs = [quad_concept, perim_concept]
+    concept_objs = [perim_concept]
+
+    # Seed all Grade 10 Quadratic Equations concepts from DAG
+    from app.services.learning_path.curriculum_graph import QUADRATIC_EQUATIONS_DAG
+    for node in QUADRATIC_EQUATIONS_DAG.nodes.values():
+        c_obj = Concept(
+            id=uuid.UUID(node.id),
+            topic_category=node.topic,
+            code=node.code,
+            title=node.title,
+            prerequisite_concept_ids=[str(pid) for pid in node.prerequisites],
+            grade_level=node.grade_level
+        )
+        concept_objs.append(c_obj)
 
     # Seed all Grade 11 Indices and Logarithms concepts from DAG
     for node in INDICES_LOGARITHMS_DAG.nodes.values():
@@ -51,9 +54,10 @@ def seed_database(db: Session):
         )
         concept_objs.append(c_obj)
 
-    
     db.add_all(concept_objs)
     db.commit()
+
+    quad_concept = next(c for c in concept_objs if c.id == uuid.UUID("c1111111-1111-1111-1111-111111111111"))
 
     # 2. Create Canonical Math Question
     quad_question = Question(
