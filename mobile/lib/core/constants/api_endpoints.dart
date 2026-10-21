@@ -17,6 +17,7 @@ class ApiEndpoints {
   // Auth
   static String get login => "$baseUrl/auth/login";
   static String get register => "$baseUrl/auth/register";
+  static String get googleAuth => "$baseUrl/auth/google";
 
   // Students
   static String get currentStudent => "$baseUrl/students/me";

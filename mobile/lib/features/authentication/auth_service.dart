@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_client.dart';
 import '../learning_path/learning_path_service.dart';
@@ -14,6 +16,7 @@ class AuthUser {
   final String school;
   final String district;
   final String avatarId;
+  final String authProvider;
 
   const AuthUser({
     required this.studentId,
@@ -25,7 +28,34 @@ class AuthUser {
     required this.school,
     required this.district,
     required this.avatarId,
+    this.authProvider = 'email',
   });
+
+  Map<String, dynamic> toJson() => {
+        'student_id': studentId,
+        'token': token,
+        'full_name': fullName,
+        'email': email,
+        'grade_level': gradeLevel,
+        'preferred_goal': preferredGoal,
+        'school': school,
+        'district': district,
+        'avatar_id': avatarId,
+        'auth_provider': authProvider,
+      };
+
+  factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
+        studentId: json['student_id'] as String? ?? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        token: json['token'] as String? ?? '',
+        fullName: json['full_name'] as String? ?? 'Student',
+        email: json['email'] as String? ?? '',
+        gradeLevel: (json['grade_level'] as num?)?.toInt() ?? 11,
+        preferredGoal: json['preferred_goal'] as String? ?? 'TERM_TEST',
+        school: json['school'] as String? ?? 'Central College, Kandy',
+        district: json['district'] as String? ?? 'Central Province',
+        avatarId: json['avatar_id'] as String? ?? 'fox_math',
+        authProvider: json['auth_provider'] as String? ?? 'email',
+      );
 }
 
 class AuthService {
@@ -36,45 +66,129 @@ class AuthService {
   static AuthUser? _currentUser;
   static AuthUser? get currentUser => _currentUser;
 
+  static const String _prefKeyCurrentUser = 'adaptive_learning_current_user';
+  static const String _prefKeyCachedAccounts = 'adaptive_learning_cached_accounts';
+
+  /// Save user session and update local accounts registry for persistent offline access
+  static Future<void> saveUserToLocal(AuthUser user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefKeyCurrentUser, jsonEncode(user.toJson()));
+
+      // Update cached accounts registry
+      final accountsRaw = prefs.getString(_prefKeyCachedAccounts);
+      Map<String, dynamic> accountsMap = {};
+      if (accountsRaw != null && accountsRaw.isNotEmpty) {
+        try {
+          accountsMap = jsonDecode(accountsRaw) as Map<String, dynamic>;
+        } catch (_) {}
+      }
+      accountsMap[user.email.toLowerCase().trim()] = user.toJson();
+      await prefs.setString(_prefKeyCachedAccounts, jsonEncode(accountsMap));
+    } catch (_) {
+      // Local storage non-critical failure
+    }
+  }
+
+  /// Retrieve locally cached account by email
+  static Future<AuthUser?> getCachedAccount(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accountsRaw = prefs.getString(_prefKeyCachedAccounts);
+      if (accountsRaw != null && accountsRaw.isNotEmpty) {
+        final accountsMap = jsonDecode(accountsRaw) as Map<String, dynamic>;
+        final key = email.toLowerCase().trim();
+        if (accountsMap.containsKey(key)) {
+          final rawUser = accountsMap[key] as Map<String, dynamic>;
+          return AuthUser.fromJson(rawUser);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Load currently persisted session on app launch
+  static Future<AuthUser?> loadStoredSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString(_prefKeyCurrentUser);
+      if (userJson != null && userJson.isNotEmpty) {
+        final user = AuthUser.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
+        _currentUser = user;
+        syncAppState(user);
+        return user;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Sign In with Email & Password
   Future<AuthUser> login({
     required String email,
     required String password,
   }) async {
     Map<String, dynamic> data = {};
+    bool networkSuccess = false;
     try {
       data = await apiClient.post(ApiEndpoints.login, {
         'email': email,
         'password': password,
       });
+      networkSuccess = data.containsKey('student_id');
     } catch (_) {
-      // Offline fallback
+      networkSuccess = false;
     }
 
-    final studentId = data['student_id'] as String? ?? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-    final token = data['access_token'] as String? ?? 'dev_token_$studentId';
     final isG10 = email.toLowerCase().contains('10') || email.toLowerCase().contains('quad');
 
-    final fullName = data['full_name'] as String? ?? (isG10 ? 'Kasun Perera' : 'Aqeel M.I.M');
-    final gradeLevel = (data['grade_level'] as num?)?.toInt() ?? (isG10 ? 10 : 11);
-    final preferredGoal = data['preferred_goal'] as String? ?? (isG10 ? 'COMPREHENSIVE' : 'TERM_TEST');
-    final school = data['school'] as String? ?? 'Central College, Kandy';
-    final district = data['district'] as String? ?? 'Central Province';
-    final avatarId = data['avatar_id'] as String? ?? (isG10 ? 'owl_scholar' : 'fox_math');
+    AuthUser user;
+    if (networkSuccess) {
+      final studentId = data['student_id'] as String? ?? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+      final token = data['access_token'] as String? ?? 'token_$studentId';
+      final fullName = data['full_name'] as String? ?? (isG10 ? 'Kasun Perera' : 'Aqeel M.I.M');
+      final gradeLevel = (data['grade_level'] as num?)?.toInt() ?? (isG10 ? 10 : 11);
+      final preferredGoal = data['preferred_goal'] as String? ?? (isG10 ? 'COMPREHENSIVE' : 'TERM_TEST');
+      final school = data['school'] as String? ?? 'Central College, Kandy';
+      final district = data['district'] as String? ?? 'Central Province';
+      final avatarId = data['avatar_id'] as String? ?? (isG10 ? 'owl_scholar' : 'fox_math');
+      final authProvider = data['auth_provider'] as String? ?? 'email';
 
-    final user = AuthUser(
-      studentId: studentId,
-      token: token,
-      fullName: fullName,
-      email: email,
-      gradeLevel: gradeLevel,
-      preferredGoal: preferredGoal,
-      school: school,
-      district: district,
-      avatarId: avatarId,
-    );
+      user = AuthUser(
+        studentId: studentId,
+        token: token,
+        fullName: fullName,
+        email: email,
+        gradeLevel: gradeLevel,
+        preferredGoal: preferredGoal,
+        school: school,
+        district: district,
+        avatarId: avatarId,
+        authProvider: authProvider,
+      );
+    } else {
+      // Offline fallback: check if user was previously registered or logged in
+      final cached = await getCachedAccount(email);
+      if (cached != null) {
+        user = cached;
+      } else {
+        const studentId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+        user = AuthUser(
+          studentId: studentId,
+          token: 'token_$studentId',
+          fullName: isG10 ? 'Kasun Perera' : (email.contains('@') ? email.split('@')[0].replaceAll('.', ' ') : 'Student'),
+          email: email,
+          gradeLevel: isG10 ? 10 : 11,
+          preferredGoal: isG10 ? 'COMPREHENSIVE' : 'TERM_TEST',
+          school: 'Central College, Kandy',
+          district: 'Central Province',
+          avatarId: isG10 ? 'owl_scholar' : 'fox_math',
+          authProvider: 'email',
+        );
+      }
+    }
 
     _currentUser = user;
+    await saveUserToLocal(user);
     syncAppState(user);
     return user;
   }
@@ -91,6 +205,7 @@ class AuthService {
     String avatarId = 'fox_math',
   }) async {
     Map<String, dynamic> data = {};
+    bool networkSuccess = false;
     try {
       data = await apiClient.post(ApiEndpoints.register, {
         'full_name': fullName,
@@ -102,12 +217,15 @@ class AuthService {
         'district': district,
         'avatar_id': avatarId,
       });
+      networkSuccess = data.containsKey('student_id');
     } catch (_) {
-      // Offline fallback
+      networkSuccess = false;
     }
 
-    final studentId = data['student_id'] as String? ?? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-    final token = data['access_token'] as String? ?? 'dev_token_$studentId';
+    final studentId = networkSuccess
+        ? (data['student_id'] as String? ?? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')
+        : 'stu_${DateTime.now().millisecondsSinceEpoch}';
+    final token = networkSuccess ? (data['access_token'] as String? ?? 'token_$studentId') : 'token_$studentId';
 
     final user = AuthUser(
       studentId: studentId,
@@ -119,9 +237,66 @@ class AuthService {
       school: school,
       district: district,
       avatarId: avatarId,
+      authProvider: 'email',
     );
 
     _currentUser = user;
+    await saveUserToLocal(user);
+    syncAppState(user);
+    return user;
+  }
+
+  /// Sign In with Google OAuth
+  Future<AuthUser> loginWithGoogle({
+    required String googleId,
+    required String email,
+    required String fullName,
+    String? avatarUrl,
+    int gradeLevel = 11,
+    String preferredGoal = 'TERM_TEST',
+    String school = 'Central College, Kandy',
+    String district = 'Central Province',
+    String avatarId = 'fox_math',
+  }) async {
+    Map<String, dynamic> data = {};
+    bool networkSuccess = false;
+    try {
+      data = await apiClient.post(ApiEndpoints.googleAuth, {
+        'google_id': googleId,
+        'email': email,
+        'full_name': fullName,
+        'avatar_url': avatarUrl,
+        'grade_level': gradeLevel,
+        'preferred_goal': preferredGoal,
+        'school': school,
+        'district': district,
+        'avatar_id': avatarId,
+      });
+      networkSuccess = data.containsKey('student_id');
+    } catch (_) {
+      networkSuccess = false;
+    }
+
+    final studentId = networkSuccess
+        ? (data['student_id'] as String? ?? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')
+        : 'google_$googleId';
+    final token = networkSuccess ? (data['access_token'] as String? ?? 'google_token_$studentId') : 'google_token_$studentId';
+
+    final user = AuthUser(
+      studentId: studentId,
+      token: token,
+      fullName: data['full_name'] as String? ?? fullName,
+      email: email,
+      gradeLevel: (data['grade_level'] as num?)?.toInt() ?? gradeLevel,
+      preferredGoal: data['preferred_goal'] as String? ?? preferredGoal,
+      school: data['school'] as String? ?? school,
+      district: data['district'] as String? ?? district,
+      avatarId: data['avatar_id'] as String? ?? avatarId,
+      authProvider: 'google',
+    );
+
+    _currentUser = user;
+    await saveUserToLocal(user);
     syncAppState(user);
     return user;
   }
@@ -131,7 +306,7 @@ class AuthService {
     // 1. Update ProfileService cache
     ProfileService.cachedProfile = UserProfile(
       studentId: user.studentId,
-      anonymizedCode: 'STU_HASH_${user.studentId.substring(0, 6).toUpperCase()}',
+      anonymizedCode: 'STU_HASH_${user.studentId.length >= 6 ? user.studentId.substring(0, 6).toUpperCase() : "DEMO"}',
       fullName: user.fullName,
       email: user.email,
       gradeLevel: user.gradeLevel,
@@ -223,7 +398,11 @@ class AuthService {
     };
   }
 
-  void logout() {
+  Future<void> logout() async {
     _currentUser = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefKeyCurrentUser);
+    } catch (_) {}
   }
 }

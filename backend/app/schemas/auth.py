@@ -18,6 +18,18 @@ class RegisterRequest(BaseModel):
     avatar_id: str = "fox_math"
 
 
+class GoogleAuthRequest(BaseModel):
+    google_id: str
+    email: EmailStr
+    full_name: str
+    avatar_url: Optional[str] = None
+    grade_level: Optional[int] = 11
+    preferred_goal: Optional[str] = "TERM_TEST"
+    school: Optional[str] = "Central College, Kandy"
+    district: Optional[str] = "Central Province"
+    avatar_id: Optional[str] = "fox_math"
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -30,3 +42,4 @@ class TokenResponse(BaseModel):
     avatar_id: Optional[str] = "fox_math"
     school: Optional[str] = None
     district: Optional[str] = None
+    auth_provider: Optional[str] = "email"

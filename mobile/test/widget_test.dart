@@ -29,4 +29,9 @@ void main() {
     expect(find.text('Grade 11'), findsOneWidget);
     expect(find.text('Create Account & Start Learning'), findsOneWidget);
   });
+
+  testWidgets('LoginScreen renders Continue with Google button', (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+    expect(find.text('Continue with Google'), findsOneWidget);
+  });
 }
