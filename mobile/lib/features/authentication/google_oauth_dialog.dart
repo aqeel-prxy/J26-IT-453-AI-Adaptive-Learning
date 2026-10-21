@@ -14,11 +14,7 @@ class GoogleOAuthDialog extends StatefulWidget {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: GoogleOAuthDialog(onAuthenticated: onAuthenticated),
-      ),
+      builder: (ctx) => GoogleOAuthDialog(onAuthenticated: onAuthenticated),
     );
   }
 
@@ -124,89 +120,122 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 440),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 28,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Google Linear Progress Bar
-          if (_isLoading)
-            const LinearProgressIndicator(
-              color: Color(0xFF1A73E8),
-              backgroundColor: Color(0xFFE8F0FE),
-              minHeight: 4,
-            )
-          else
-            const SizedBox(height: 4),
+    final screenHeight = MediaQuery.of(context).size.height;
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 24.0),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: Center(
+        child: Container(
+          width: 440,
+          constraints: BoxConstraints(
+            maxWidth: 440,
+            maxHeight: screenHeight * 0.92,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 28,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            color: Colors.white,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Google "G" Logo
-                Center(child: _buildGoogleLogo(size: 32)),
-                const SizedBox(height: 14),
+                // Google Linear Progress Bar
+                if (_isLoading)
+                  const LinearProgressIndicator(
+                    color: Color(0xFF1A73E8),
+                    backgroundColor: Color(0xFFE8F0FE),
+                    minHeight: 4,
+                  )
+                else
+                  const SizedBox(height: 4),
 
-                if (_step == 0) _buildAccountPickerStep(),
-                if (_step == 1) _buildEmailEntryStep(),
-                if (_step == 2) _buildPasswordEntryStep(),
+                // Scrollable Content Body
+                Flexible(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(32, 20, 32, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Google "G" Logo
+                        Center(child: _buildGoogleLogo(size: 34)),
+                        const SizedBox(height: 16),
 
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Row(
+                        if (_step == 0) _buildAccountPickerStep(),
+                        if (_step == 1) _buildEmailEntryStep(),
+                        if (_step == 2) _buildPasswordEntryStep(),
+
+                        if (_errorMessage != null) ...[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCE8E6),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: Color(0xFFD93025), size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: GoogleFonts.roboto(color: const Color(0xFFD93025), fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Google Privacy & Terms Footer
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  color: const Color(0xFFF8F9FA),
+                  child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: Color(0xFFD93025), size: 16),
-                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          _errorMessage!,
-                          style: GoogleFonts.roboto(color: const Color(0xFFD93025), fontSize: 12),
+                          'English (United States)',
+                          style: GoogleFonts.roboto(fontSize: 10.5, color: const Color(0xFF5F6368)),
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Help', style: GoogleFonts.roboto(fontSize: 10.5, color: const Color(0xFF5F6368))),
+                          const SizedBox(width: 8),
+                          Text('Privacy', style: GoogleFonts.roboto(fontSize: 10.5, color: const Color(0xFF5F6368))),
+                          const SizedBox(width: 8),
+                          Text('Terms', style: GoogleFonts.roboto(fontSize: 10.5, color: const Color(0xFF5F6368))),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ],
-            ),
-          ),
-
-          // Google Privacy & Terms Footer
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            color: const Color(0xFFF8F9FA),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'English (United States)',
-                  style: GoogleFonts.roboto(fontSize: 11, color: const Color(0xFF5F6368)),
-                ),
-                Row(
-                  children: [
-                    Text('Help', style: GoogleFonts.roboto(fontSize: 11, color: const Color(0xFF5F6368))),
-                    const SizedBox(width: 14),
-                    Text('Privacy', style: GoogleFonts.roboto(fontSize: 11, color: const Color(0xFF5F6368))),
-                    const SizedBox(width: 14),
-                    Text('Terms', style: GoogleFonts.roboto(fontSize: 11, color: const Color(0xFF5F6368))),
-                  ],
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -322,7 +351,8 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
   // ===========================================================================
   Widget _buildEmailEntryStep() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Center(
           child: Text(
@@ -334,7 +364,7 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Center(
           child: Text(
             'with your Google Account to continue to AdaptiveMath AI',
@@ -351,10 +381,9 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
-          autofocus: true,
           decoration: InputDecoration(
             labelText: 'Email or phone',
-            hintText: 'e.g. aqeel.student@gmail.com',
+            hintText: 'e.g. kasun.perera@gmail.com',
             labelStyle: GoogleFonts.roboto(color: const Color(0xFF5F6368), fontSize: 13),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
@@ -367,29 +396,31 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
 
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(padding: EdgeInsets.zero),
-              child: Text(
-                'Forgot email?',
-                style: GoogleFonts.roboto(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF1A73E8)),
-              ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () {},
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(50, 24),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-          ],
+            child: Text(
+              'Forgot email?',
+              style: GoogleFonts.roboto(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF1A73E8)),
+            ),
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
         // Full Name (Optional Google profile sync)
         TextField(
           controller: _nameController,
           decoration: InputDecoration(
             labelText: 'Display Name (Google Profile)',
-            hintText: 'e.g. Aqeel M.I.M',
+            hintText: 'e.g. Kasun Perera',
             labelStyle: GoogleFonts.roboto(color: const Color(0xFF5F6368), fontSize: 13),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
@@ -402,28 +433,107 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
         // Grade selector for learning path synchronization
-        Text('Curriculum Grade Level:', style: GoogleFonts.roboto(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF5F6368))),
-        const SizedBox(height: 6),
+        Text(
+          'Curriculum Grade Level:',
+          style: GoogleFonts.roboto(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF5F6368)),
+        ),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
-              child: ChoiceChip(
-                label: const Center(child: Text('Grade 10 (Quadratics)', style: TextStyle(fontSize: 11))),
-                selected: _selectedGrade == 10,
-                selectedColor: const Color(0xFFE8F0FE),
-                onSelected: (val) => setState(() => _selectedGrade = 10),
+              child: InkWell(
+                onTap: () => setState(() => _selectedGrade = 10),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: _selectedGrade == 10 ? const Color(0xFFE8F0FE) : Colors.white,
+                    border: Border.all(
+                      color: _selectedGrade == 10 ? const Color(0xFF1A73E8) : const Color(0xFFDADCE0),
+                      width: _selectedGrade == 10 ? 1.5 : 1.0,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_selectedGrade == 10) ...[
+                            const Icon(Icons.check, color: Color(0xFF1A73E8), size: 14),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            'Grade 10',
+                            style: GoogleFonts.roboto(
+                              fontSize: 12,
+                              fontWeight: _selectedGrade == 10 ? FontWeight.w700 : FontWeight.w500,
+                              color: _selectedGrade == 10 ? const Color(0xFF1A73E8) : const Color(0xFF3C4043),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Quadratic Equations',
+                        style: GoogleFonts.roboto(
+                          fontSize: 10,
+                          color: _selectedGrade == 10 ? const Color(0xFF1A73E8) : const Color(0xFF5F6368),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
-              child: ChoiceChip(
-                label: const Center(child: Text('Grade 11 (Indices)', style: TextStyle(fontSize: 11))),
-                selected: _selectedGrade == 11,
-                selectedColor: const Color(0xFFE8F0FE),
-                onSelected: (val) => setState(() => _selectedGrade = 11),
+              child: InkWell(
+                onTap: () => setState(() => _selectedGrade = 11),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: _selectedGrade == 11 ? const Color(0xFFE8F0FE) : Colors.white,
+                    border: Border.all(
+                      color: _selectedGrade == 11 ? const Color(0xFF1A73E8) : const Color(0xFFDADCE0),
+                      width: _selectedGrade == 11 ? 1.5 : 1.0,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_selectedGrade == 11) ...[
+                            const Icon(Icons.check, color: Color(0xFF1A73E8), size: 14),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            'Grade 11',
+                            style: GoogleFonts.roboto(
+                              fontSize: 12,
+                              fontWeight: _selectedGrade == 11 ? FontWeight.w700 : FontWeight.w500,
+                              color: _selectedGrade == 11 ? const Color(0xFF1A73E8) : const Color(0xFF3C4043),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Indices & Logarithms',
+                        style: GoogleFonts.roboto(
+                          fontSize: 10,
+                          color: _selectedGrade == 11 ? const Color(0xFF1A73E8) : const Color(0xFF5F6368),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -431,7 +541,7 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
         const SizedBox(height: 16),
 
         Text(
-          'To continue, Google will share your name, email address, and profile picture with AdaptiveMath AI.',
+          'To continue, Google will share your name, email address, language preference, and profile picture with AdaptiveMath AI.',
           style: GoogleFonts.roboto(fontSize: 11, color: const Color(0xFF5F6368), height: 1.35),
         ),
         const SizedBox(height: 24),
@@ -442,7 +552,10 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
           children: [
             if (_savedAccounts.isNotEmpty)
               TextButton(
-                onPressed: () => setState(() => _step = 0),
+                onPressed: () => setState(() {
+                  _step = 0;
+                  _errorMessage = null;
+                }),
                 child: Text('Back', style: GoogleFonts.roboto(color: const Color(0xFF1A73E8), fontWeight: FontWeight.w500)),
               )
             else
@@ -475,7 +588,8 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
     final name = _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : email.split('@')[0];
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Center(
           child: Text(
@@ -528,7 +642,6 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
         TextField(
           controller: _passwordController,
           obscureText: _obscurePassword,
-          autofocus: true,
           decoration: InputDecoration(
             labelText: 'Enter your password',
             labelStyle: GoogleFonts.roboto(color: const Color(0xFF5F6368), fontSize: 13),
@@ -562,7 +675,10 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             TextButton(
-              onPressed: () => setState(() => _step = 1),
+              onPressed: () => setState(() {
+                _step = 1;
+                _errorMessage = null;
+              }),
               child: Text('Back', style: GoogleFonts.roboto(color: const Color(0xFF1A73E8), fontWeight: FontWeight.w500)),
             ),
             ElevatedButton(
@@ -583,7 +699,7 @@ class _GoogleOAuthDialogState extends State<GoogleOAuthDialog> {
               ),
               child: _isLoading
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text('Next', style: GoogleFonts.roboto(fontWeight: FontWeight.w500, fontSize: 13.5)),
+                  : Text('Sign In', style: GoogleFonts.roboto(fontWeight: FontWeight.w500, fontSize: 13.5)),
             ),
           ],
         ),

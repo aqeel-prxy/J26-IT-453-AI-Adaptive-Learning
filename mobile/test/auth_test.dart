@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:adaptive_learning_mobile/core/network/api_client.dart';
 import 'package:adaptive_learning_mobile/features/authentication/auth_service.dart';
 import 'package:adaptive_learning_mobile/features/authentication/login_screen.dart';
+import 'package:adaptive_learning_mobile/features/authentication/google_oauth_dialog.dart';
 import 'package:adaptive_learning_mobile/core/routing/app_router.dart';
 
 void main() {
@@ -214,6 +215,64 @@ void main() {
       // Verify user did NOT navigate to Dashboard
       expect(navigatedToDashboard, isFalse);
       expect(find.text('Student Login'), findsOneWidget);
+    });
+  });
+
+  group('GoogleOAuthDialog Widget Tests', () {
+    testWidgets('displays account picker and transitions to email entry without overlapping', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => GoogleOAuthDialog.show(context, onAuthenticated: (_) {}),
+                child: const Text('Open Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Dialog'));
+      await tester.pumpAndSettle();
+
+      // Account Picker step is visible
+      expect(find.text('Choose an account'), findsOneWidget);
+      expect(find.text('Use another account'), findsOneWidget);
+
+      // Tap 'Use another account'
+      await tester.tap(find.text('Use another account'));
+      await tester.pumpAndSettle();
+
+      // Email entry step is cleanly rendered
+      expect(find.text('Sign in'), findsOneWidget);
+      expect(find.text('with your Google Account to continue to AdaptiveMath AI'), findsOneWidget);
+      expect(find.text('Email or phone'), findsOneWidget);
+      expect(find.text('Display Name (Google Profile)'), findsOneWidget);
+      expect(find.text('Grade 10'), findsOneWidget);
+      expect(find.text('Grade 11'), findsOneWidget);
+      expect(find.text('Quadratic Equations'), findsOneWidget);
+      expect(find.text('Indices & Logarithms'), findsOneWidget);
+      expect(find.text('Next'), findsOneWidget);
+      expect(find.text('Back'), findsOneWidget);
+
+      // Enter email and tap Next
+      final emailField = find.widgetWithText(TextField, 'Email or phone');
+      await tester.enterText(emailField, 'test.student@gmail.com');
+      await tester.ensureVisible(find.text('Next'));
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+
+      // Password step is visible
+      expect(find.text('Welcome'), findsOneWidget);
+      expect(find.text('Enter your password'), findsOneWidget);
+      expect(find.text('Sign In'), findsOneWidget);
+
+      // Tap Back to return to Email Entry
+      await tester.ensureVisible(find.text('Back'));
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sign in'), findsOneWidget);
     });
   });
 }
