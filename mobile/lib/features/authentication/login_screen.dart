@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/routing/app_router.dart';
 import '../profile/profile_service.dart';
 import 'auth_service.dart';
+import 'google_oauth_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _loginPasswordController = TextEditingController(text: 'password123');
   bool _obscureLoginPassword = true;
   bool _isLoginLoading = false;
-  bool _isGoogleLoading = false;
 
   // Sign Up Controllers
   final _registerNameController = TextEditingController(text: 'Aqeel M.I.M');
@@ -150,196 +150,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
   }
 
-  Future<void> _handleGoogleSignIn({
-    required String googleId,
-    required String email,
-    required String fullName,
-    int gradeLevel = 11,
-    String preferredGoal = 'TERM_TEST',
-  }) async {
-    setState(() => _isGoogleLoading = true);
-    try {
-      final user = await _authService.loginWithGoogle(
-        googleId: googleId,
-        email: email,
-        fullName: fullName,
-        gradeLevel: gradeLevel,
-        preferredGoal: preferredGoal,
-        avatarId: gradeLevel == 10 ? 'owl_scholar' : 'fox_math',
-      );
 
-      if (mounted) {
+  void _openGoogleOAuthFlow(BuildContext context) {
+    GoogleOAuthDialog.show(
+      context,
+      onAuthenticated: (user) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Google Sign-In verified as ${user.fullName} (Grade ${user.gradeLevel})')),
+                Expanded(child: Text('Google Sign-In verified as ${user.fullName} (${user.email})')),
               ],
             ),
-            backgroundColor: const Color(0xFF4285F4),
+            backgroundColor: const Color(0xFF1A73E8),
             duration: const Duration(seconds: 2),
           ),
         );
         Navigator.pushReplacementNamed(context, AppRouter.dashboard);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google Sign-In notice: $e')),
-        );
-        Navigator.pushReplacementNamed(context, AppRouter.dashboard);
-      }
-    } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
-    }
-  }
-
-  void _showGoogleAccountPicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    _buildGoogleLogo(size: 26),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Sign in with Google',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          'Choose an account to continue to AdaptiveMath AI',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const Divider(height: 28),
-
-                // Account 1: Aqeel M.I.M
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF4285F4),
-                    child: Text('A', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w800)),
-                  ),
-                  title: Text('Aqeel M.I.M', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                  subtitle: Text('aqeel.research@gmail.com • Grade 11 (Indices)', style: GoogleFonts.plusJakartaSans(fontSize: 11)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _handleGoogleSignIn(
-                      googleId: 'google_aqeel_101',
-                      email: 'aqeel.research@gmail.com',
-                      fullName: 'Aqeel M.I.M',
-                      gradeLevel: 11,
-                      preferredGoal: 'TERM_TEST',
-                    );
-                  },
-                ),
-
-                // Account 2: Kasun Perera
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF34A853),
-                    child: Text('K', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w800)),
-                  ),
-                  title: Text('Kasun Perera', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                  subtitle: Text('kasun.perera@gmail.com • Grade 10 (Quadratics)', style: GoogleFonts.plusJakartaSans(fontSize: 11)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _handleGoogleSignIn(
-                      googleId: 'google_kasun_102',
-                      email: 'kasun.perera@gmail.com',
-                      fullName: 'Kasun Perera',
-                      gradeLevel: 10,
-                      preferredGoal: 'COMPREHENSIVE',
-                    );
-                  },
-                ),
-
-                // Account 3: Custom Google Account prompt
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFF1F5F9),
-                    child: Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF64748B), size: 20),
-                  ),
-                  title: Text('Use another Google Account', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 13)),
-                  subtitle: Text('Enter custom email or school G-Suite ID', style: GoogleFonts.plusJakartaSans(fontSize: 11)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _promptCustomGoogleEmail(context);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
       },
-    );
-  }
-
-  void _promptCustomGoogleEmail(BuildContext context) {
-    final customController = TextEditingController(text: 'student.ol@moe.lk');
-    showDialog(
-      context: context,
-      builder: (dCtx) => AlertDialog(
-        title: Row(
-          children: [
-            _buildGoogleLogo(size: 22),
-            const SizedBox(width: 8),
-            Text('Enter Google Account', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 15)),
-          ],
-        ),
-        content: TextField(
-          controller: customController,
-          decoration: const InputDecoration(
-            labelText: 'Google Email Address',
-            hintText: 'user@gmail.com',
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              final em = customController.text.trim();
-              if (em.isNotEmpty) {
-                Navigator.pop(dCtx);
-                _handleGoogleSignIn(
-                  googleId: 'google_${DateTime.now().millisecondsSinceEpoch}',
-                  email: em,
-                  fullName: em.split('@')[0].replaceAll('.', ' ').toUpperCase(),
-                  gradeLevel: 11,
-                );
-              }
-            },
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -891,7 +721,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   Widget _buildGoogleButton() {
     return OutlinedButton(
-      onPressed: _isGoogleLoading ? null : () => _showGoogleAccountPicker(context),
+      onPressed: () => _openGoogleOAuthFlow(context),
       style: OutlinedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1E293B),
@@ -901,23 +731,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         elevation: 0.5,
         shadowColor: Colors.black.withOpacity(0.04),
       ),
-      child: _isGoogleLoading
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildGoogleLogo(size: 20),
-                const SizedBox(width: 10),
-                Text(
-                  'Continue with Google',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF334155),
-                  ),
-                ),
-              ],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildGoogleLogo(size: 20),
+          const SizedBox(width: 10),
+          Text(
+            'Continue with Google',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF334155),
             ),
+          ),
+        ],
+      ),
     );
   }
 

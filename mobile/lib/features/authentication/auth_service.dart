@@ -68,6 +68,54 @@ class AuthService {
 
   static const String _prefKeyCurrentUser = 'adaptive_learning_current_user';
   static const String _prefKeyCachedAccounts = 'adaptive_learning_cached_accounts';
+  static const String _prefKeyGoogleAccounts = 'adaptive_learning_google_accounts';
+
+  /// Get list of previously authenticated Google accounts
+  static Future<List<Map<String, dynamic>>> getSavedGoogleAccounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefKeyGoogleAccounts);
+      if (raw != null && raw.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(raw);
+        return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+    return [
+      {
+        'email': 'aqeel.research@gmail.com',
+        'name': 'Aqeel M.I.M',
+        'google_id': 'google_aqeel_101',
+        'grade_level': 11,
+      },
+      {
+        'email': 'kasun.perera@gmail.com',
+        'name': 'Kasun Perera',
+        'google_id': 'google_kasun_102',
+        'grade_level': 10,
+      },
+    ];
+  }
+
+  /// Save a Google account to the device's Google Accounts list
+  static Future<void> saveGoogleAccount({
+    required String email,
+    required String name,
+    required String googleId,
+    int gradeLevel = 11,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accounts = await getSavedGoogleAccounts();
+      accounts.removeWhere((a) => (a['email'] as String?)?.toLowerCase() == email.toLowerCase().trim());
+      accounts.insert(0, {
+        'email': email.trim(),
+        'name': name.trim(),
+        'google_id': googleId,
+        'grade_level': gradeLevel,
+      });
+      await prefs.setString(_prefKeyGoogleAccounts, jsonEncode(accounts));
+    } catch (_) {}
+  }
 
   /// Save user session and update local accounts registry for persistent offline access
   static Future<void> saveUserToLocal(AuthUser user) async {
@@ -297,6 +345,7 @@ class AuthService {
 
     _currentUser = user;
     await saveUserToLocal(user);
+    await saveGoogleAccount(email: user.email, name: user.fullName, googleId: googleId, gradeLevel: user.gradeLevel);
     syncAppState(user);
     return user;
   }
