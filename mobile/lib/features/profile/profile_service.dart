@@ -69,7 +69,7 @@ class ProfileService {
     ),
   ];
 
-  static UserProfile _cachedProfile = UserProfile(
+  static UserProfile cachedProfile = UserProfile(
     studentId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     anonymizedCode: 'STU_HASH_9A4F21',
     fullName: 'Kavindu Dharmasena',
@@ -88,7 +88,7 @@ class ProfileService {
     try {
       final data = await apiClient.get(ApiEndpoints.currentStudent);
       if (data.containsKey('student_id')) {
-        _cachedProfile = _cachedProfile.copyWith(
+        cachedProfile = cachedProfile.copyWith(
           email: data['email'] as String?,
           gradeLevel: (data['grade_level'] as num?)?.toInt(),
         );
@@ -96,11 +96,11 @@ class ProfileService {
     } catch (_) {
       // Fallback to local profile cache
     }
-    return _cachedProfile;
+    return cachedProfile;
   }
 
   Future<UserProfile> updateProfile(UserProfile updated) async {
-    _cachedProfile = updated;
+    cachedProfile = updated;
     try {
       // Attempt to notify backend
       await apiClient.post(
@@ -110,7 +110,7 @@ class ProfileService {
     } catch (_) {
       // Offline fallback: keep local cache updated
     }
-    return _cachedProfile;
+    return cachedProfile;
   }
 
   Future<EngagementFeedback> getEngagementFeedback({String? overrideState}) async {
@@ -118,7 +118,7 @@ class ProfileService {
     _currentSimulatedState = state;
 
     try {
-      final endpoint = '${ApiEndpoints.baseUrl}/engagement/profile-feedback/${_cachedProfile.studentId}?state=$state';
+      final endpoint = '${ApiEndpoints.baseUrl}/engagement/profile-feedback/${cachedProfile.studentId}?state=$state';
       final res = await apiClient.get(endpoint);
       return EngagementFeedback.fromJson(res);
     } catch (_) {
@@ -130,11 +130,11 @@ class ProfileService {
     switch (state) {
       case 'FOCUSED':
         return EngagementFeedback(
-          studentId: _cachedProfile.studentId,
+          studentId: cachedProfile.studentId,
           affectiveState: 'FOCUSED',
           stateLabel: 'Focused & In Deep Flow',
           confidenceScore: 0.94,
-          motivationalArchetype: _cachedProfile.motivationalArchetype,
+          motivationalArchetype: cachedProfile.motivationalArchetype,
           situationExplanation:
               'Clickstream telemetry shows continuous focus: optimal problem latency (42s) with steady deliberation and zero blind guessing.',
           primaryRecommendation:
@@ -171,11 +171,11 @@ class ProfileService {
 
       case 'BORED':
         return EngagementFeedback(
-          studentId: _cachedProfile.studentId,
+          studentId: cachedProfile.studentId,
           affectiveState: 'BORED',
           stateLabel: 'Boredom / Inattention Detected',
           confidenceScore: 0.86,
-          motivationalArchetype: _cachedProfile.motivationalArchetype,
+          motivationalArchetype: cachedProfile.motivationalArchetype,
           situationExplanation:
               'Sub-10s question dismissals combined with 80s idle gaps indicate loss of cognitive stimulation. Tasks may feel repetitive.',
           primaryRecommendation:
@@ -212,11 +212,11 @@ class ProfileService {
 
       case 'AT_RISK':
         return EngagementFeedback(
-          studentId: _cachedProfile.studentId,
+          studentId: cachedProfile.studentId,
           affectiveState: 'AT_RISK',
           stateLabel: 'At-Risk of Task Abandonment',
           confidenceScore: 0.92,
-          motivationalArchetype: _cachedProfile.motivationalArchetype,
+          motivationalArchetype: cachedProfile.motivationalArchetype,
           situationExplanation:
               'High interaction latency (210s) with 4 consecutive incorrect attempts and erratic click rates indicates cognitive overload.',
           primaryRecommendation:
@@ -261,11 +261,11 @@ class ProfileService {
       case 'FRUSTRATED':
       default:
         return EngagementFeedback(
-          studentId: _cachedProfile.studentId,
+          studentId: cachedProfile.studentId,
           affectiveState: 'FRUSTRATED',
           stateLabel: 'Cognitive Strain & Frustration Detected',
           confidenceScore: 0.89,
-          motivationalArchetype: _cachedProfile.motivationalArchetype,
+          motivationalArchetype: cachedProfile.motivationalArchetype,
           situationExplanation:
               'Multiple attempt bursts within 2 minutes accompanied by high hesitation (52s) on Quadratic Equations. Pattern reflects cognitive struggle without comprehension.',
           primaryRecommendation:
