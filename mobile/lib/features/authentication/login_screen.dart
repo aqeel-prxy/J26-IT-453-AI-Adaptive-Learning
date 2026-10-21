@@ -7,7 +7,8 @@ import 'auth_service.dart';
 import 'google_oauth_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AuthService? authService;
+  const LoginScreen({super.key, this.authService});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -15,7 +16,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _authService = AuthService();
+  late final AuthService _authService;
 
   // Sign In Controllers
   final _loginEmailController = TextEditingController(text: 'student@example.lk');
@@ -39,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
+    _authService = widget.authService ?? AuthService();
     _tabController = TabController(length: 2, vsync: this);
     _restorePersistedSession();
   }
@@ -89,10 +91,27 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
     } catch (e) {
       if (mounted) {
+        final rawMsg = e.toString().replaceFirst('Exception: ', '').trim();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign in notice: $e')),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    rawMsg.isNotEmpty ? rawMsg : 'Authentication failed. Please check your credentials.',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 4),
+          ),
         );
-        Navigator.pushReplacementNamed(context, AppRouter.dashboard);
       }
     } finally {
       if (mounted) setState(() => _isLoginLoading = false);
@@ -140,10 +159,27 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
     } catch (e) {
       if (mounted) {
+        final rawMsg = e.toString().replaceFirst('Exception: ', '').trim();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration notice: $e')),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    rawMsg.isNotEmpty ? rawMsg : 'Registration failed. Please check your details.',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 4),
+          ),
         );
-        Navigator.pushReplacementNamed(context, AppRouter.dashboard);
       }
     } finally {
       if (mounted) setState(() => _isRegisterLoading = false);

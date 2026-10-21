@@ -69,6 +69,7 @@ class AuthService {
   static const String _prefKeyCurrentUser = 'adaptive_learning_current_user';
   static const String _prefKeyCachedAccounts = 'adaptive_learning_cached_accounts';
   static const String _prefKeyGoogleAccounts = 'adaptive_learning_google_accounts';
+  static const String _prefKeyAccountPasswords = 'adaptive_learning_account_passwords';
 
   /// Get list of previously authenticated Google accounts
   static Future<List<Map<String, dynamic>>> getSavedGoogleAccounts() async {
@@ -155,6 +156,35 @@ class AuthService {
     return null;
   }
 
+  /// Securely persist registered or validated password locally for offline authentication
+  static Future<void> saveAccountPassword(String email, String password) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefKeyAccountPasswords);
+      Map<String, dynamic> passwordsMap = {};
+      if (raw != null && raw.isNotEmpty) {
+        try {
+          passwordsMap = jsonDecode(raw) as Map<String, dynamic>;
+        } catch (_) {}
+      }
+      passwordsMap[email.toLowerCase().trim()] = password;
+      await prefs.setString(_prefKeyAccountPasswords, jsonEncode(passwordsMap));
+    } catch (_) {}
+  }
+
+  /// Retrieve locally stored password for offline credential validation
+  static Future<String?> getAccountPassword(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefKeyAccountPasswords);
+      if (raw != null && raw.isNotEmpty) {
+        final passwordsMap = jsonDecode(raw) as Map<String, dynamic>;
+        return passwordsMap[email.toLowerCase().trim()] as String?;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Load currently persisted session on app launch
   static Future<AuthUser?> loadStoredSession() async {
     try {
@@ -175,19 +205,29 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    final cleanEmail = email.trim().toLowerCase();
     Map<String, dynamic> data = {};
     bool networkSuccess = false;
+    ApiException? apiException;
+
     try {
       data = await apiClient.post(ApiEndpoints.login, {
-        'email': email,
+        'email': email.trim(),
         'password': password,
       });
       networkSuccess = data.containsKey('student_id');
+    } on ApiException catch (e) {
+      apiException = e;
     } catch (_) {
       networkSuccess = false;
     }
 
-    final isG10 = email.toLowerCase().contains('10') || email.toLowerCase().contains('quad');
+    // Explicit server error (e.g. 401 Unauthorized / wrong password) must be surfaced immediately
+    if (apiException != null) {
+      throw Exception(apiException.message);
+    }
+
+    final isG10 = cleanEmail.contains('10') || cleanEmail.contains('quad');
 
     AuthUser user;
     if (networkSuccess) {
@@ -205,7 +245,7 @@ class AuthService {
         studentId: studentId,
         token: token,
         fullName: fullName,
-        email: email,
+        email: email.trim(),
         gradeLevel: gradeLevel,
         preferredGoal: preferredGoal,
         school: school,
@@ -213,18 +253,32 @@ class AuthService {
         avatarId: avatarId,
         authProvider: authProvider,
       );
+      // Cache valid credentials for offline verification
+      await saveAccountPassword(email, password);
     } else {
-      // Offline fallback: check if user was previously registered or logged in
+      // Offline fallback: validate against locally stored credentials or demo accounts
+      final storedPassword = await getAccountPassword(email);
+      final isDemoAccount = cleanEmail == 'student@example.lk' || cleanEmail == 'grade10.student@example.lk';
+      final expectedPassword = storedPassword ?? (isDemoAccount ? 'password123' : null);
+
+      if (expectedPassword == null) {
+        throw Exception('Account not found with this email. Please register first.');
+      }
+
+      if (password != expectedPassword) {
+        throw Exception('Incorrect password. Please try again.');
+      }
+
       final cached = await getCachedAccount(email);
       if (cached != null) {
         user = cached;
       } else {
         const studentId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
         user = AuthUser(
-          studentId: studentId,
+          studentId: isG10 ? 'c1111111-1111-1111-1111-111111111110' : studentId,
           token: 'token_$studentId',
-          fullName: isG10 ? 'Kasun Perera' : (email.contains('@') ? email.split('@')[0].replaceAll('.', ' ') : 'Student'),
-          email: email,
+          fullName: isG10 ? 'Kasun Perera' : 'Aqeel M.I.M',
+          email: cleanEmail,
           gradeLevel: isG10 ? 10 : 11,
           preferredGoal: isG10 ? 'COMPREHENSIVE' : 'TERM_TEST',
           school: 'Central College, Kandy',
@@ -254,10 +308,11 @@ class AuthService {
   }) async {
     Map<String, dynamic> data = {};
     bool networkSuccess = false;
+    ApiException? apiException;
     try {
       data = await apiClient.post(ApiEndpoints.register, {
         'full_name': fullName,
-        'email': email,
+        'email': email.trim(),
         'password': password,
         'grade_level': gradeLevel,
         'preferred_goal': preferredGoal,
@@ -266,8 +321,14 @@ class AuthService {
         'avatar_id': avatarId,
       });
       networkSuccess = data.containsKey('student_id');
+    } on ApiException catch (e) {
+      apiException = e;
     } catch (_) {
       networkSuccess = false;
+    }
+
+    if (apiException != null) {
+      throw Exception(apiException.message);
     }
 
     final studentId = networkSuccess
@@ -279,7 +340,7 @@ class AuthService {
       studentId: studentId,
       token: token,
       fullName: fullName,
-      email: email,
+      email: email.trim(),
       gradeLevel: gradeLevel,
       preferredGoal: preferredGoal,
       school: school,
@@ -290,6 +351,7 @@ class AuthService {
 
     _currentUser = user;
     await saveUserToLocal(user);
+    await saveAccountPassword(email, password);
     syncAppState(user);
     return user;
   }

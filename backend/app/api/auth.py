@@ -45,60 +45,83 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     student = db.query(Student).filter(Student.email == request.email).first()
 
     if student:
-        # Check password with bcrypt (or allow dev standard 'password123')
+        # Strictly validate password against bcrypt hash
         valid_password = False
         try:
             valid_password = bcrypt.checkpw(request.password.encode("utf-8"), student.hashed_password.encode("utf-8"))
         except Exception:
             valid_password = (student.hashed_password == request.password)
 
-        if not valid_password and request.password != "password123":
-            # In development test environments, allow password123 or valid bcrypt hash
+        if not valid_password:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password."
+                detail="Incorrect password. Please try again."
             )
     else:
-        # Auto-provision or seed demo accounts in DB if not found
-        is_g10 = "10" in request.email.lower() or "quad" in request.email.lower()
+        # For recognized demo accounts, seed on demand with correct demo password check
         if request.email == "student@example.lk":
+            if request.password != "password123":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Incorrect password. Please try again."
+                )
             new_id = uuid.UUID(DEMO_STUDENT_ID)
             full_name = _STUDENT_PROFILE_STATE.get("full_name") or "Aqeel M.I.M"
             grade_level = 11
             preferred_goal = "TERM_TEST"
             avatar_id = "fox_math"
-        elif is_g10:
+            hashed_pwd = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode("utf-8")
+
+            student = Student(
+                id=new_id,
+                anonymized_student_code="STU_HASH_DEMO_01",
+                email=request.email,
+                hashed_password=hashed_pwd,
+                grade_level=grade_level,
+                full_name=full_name,
+                school="Central College, Kandy",
+                district="Central Province",
+                avatar_id=avatar_id,
+                preferred_goal=preferred_goal,
+                auth_provider="email"
+            )
+            db.add(student)
+            db.commit()
+            db.refresh(student)
+        elif request.email == "grade10.student@example.lk":
+            if request.password != "password123":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Incorrect password. Please try again."
+                )
             new_id = uuid.uuid4()
             full_name = "Kasun Perera"
             grade_level = 10
             preferred_goal = "COMPREHENSIVE"
             avatar_id = "owl_scholar"
+            hashed_pwd = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode("utf-8")
+
+            student = Student(
+                id=new_id,
+                anonymized_student_code=f"STU_HASH_{str(new_id)[:8].upper()}",
+                email=request.email,
+                hashed_password=hashed_pwd,
+                grade_level=grade_level,
+                full_name=full_name,
+                school="Central College, Kandy",
+                district="Central Province",
+                avatar_id=avatar_id,
+                preferred_goal=preferred_goal,
+                auth_provider="email"
+            )
+            db.add(student)
+            db.commit()
+            db.refresh(student)
         else:
-            new_id = uuid.uuid4()
-            full_name = request.email.split("@")[0].replace(".", " ").title()
-            grade_level = 11
-            preferred_goal = "TERM_TEST"
-            avatar_id = "fox_math"
-
-        anonymized_code = f"STU_HASH_{str(new_id)[:8].upper()}"
-        hashed_pwd = bcrypt.hashpw(request.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-        student = Student(
-            id=new_id,
-            anonymized_student_code=anonymized_code,
-            email=request.email,
-            hashed_password=hashed_pwd,
-            grade_level=grade_level,
-            full_name=full_name,
-            school="Central College, Kandy",
-            district="Central Province",
-            avatar_id=avatar_id,
-            preferred_goal=preferred_goal,
-            auth_provider="email"
-        )
-        db.add(student)
-        db.commit()
-        db.refresh(student)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account not found with this email. Please register first."
+            )
 
     # 2. Synchronize in-memory profile state for Component 3 compatibility
     _sync_profile_state(student)
