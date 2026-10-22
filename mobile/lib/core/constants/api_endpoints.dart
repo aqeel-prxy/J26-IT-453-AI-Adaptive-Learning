@@ -7,7 +7,13 @@ class ApiEndpoints {
   // - 10.0.2.2: Android Emulator
   // - Wi-Fi IP (e.g. 192.168.1.X): Physical phone over local Wi-Fi
   static String get host {
-    if (kIsWeb) return "127.0.0.1";
+    if (kIsWeb) {
+      final browserHost = Uri.base.host;
+      if (browserHost.isNotEmpty && browserHost != 'localhost') {
+        return browserHost;
+      }
+      return "127.0.0.1";
+    }
     if (Platform.isAndroid) return "127.0.0.1";
     return "127.0.0.1";
   }
