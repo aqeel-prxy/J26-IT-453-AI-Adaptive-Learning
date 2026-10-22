@@ -42,6 +42,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     super.initState();
     _authService = widget.authService ?? AuthService();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
     _restorePersistedSession();
   }
 
@@ -287,6 +292,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 padding: const EdgeInsets.all(4),
                 child: TabBar(
                   controller: _tabController,
+                  onTap: (index) => setState(() {}),
                   indicator: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -310,16 +316,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ),
               const SizedBox(height: 18),
 
-              // Tab Content Area
-              SizedBox(
-                height: 590,
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildSignInTab(),
-                    _buildSignUpTab(),
-                  ],
-                ),
+              // Tab Content Area - Responsive dynamic display without nested scroll conflicts
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _tabController.index == 0
+                    ? _buildSignInTab()
+                    : _buildSignUpTab(),
               ),
             ],
           ),
@@ -332,11 +334,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   // 1. SIGN IN TAB
   // ===========================================================================
   Widget _buildSignInTab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
+    return Column(
+      key: const ValueKey('sign_in_tab'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -505,17 +507,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   // ===========================================================================
   // 2. CREATE ACCOUNT TAB
   // ===========================================================================
   Widget _buildSignUpTab() {
-    return SingleChildScrollView(
-      child: Container(
-        padding: const EdgeInsets.all(20),
+    return Container(
+      key: const ValueKey('sign_up_tab'),
+      padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -651,30 +652,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             const SizedBox(height: 12),
 
             // School & District Fields
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _registerSchoolController,
-                    decoration: InputDecoration(
-                      labelText: 'School',
-                      prefixIcon: const Icon(Icons.school_outlined, size: 18),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _registerDistrictController,
-                    decoration: InputDecoration(
-                      labelText: 'District',
-                      prefixIcon: const Icon(Icons.location_on_outlined, size: 18),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
+            TextField(
+              controller: _registerSchoolController,
+              decoration: InputDecoration(
+                labelText: 'School',
+                prefixIcon: const Icon(Icons.school_outlined, size: 18),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _registerDistrictController,
+              decoration: InputDecoration(
+                labelText: 'District',
+                prefixIcon: const Icon(Icons.location_on_outlined, size: 18),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -727,8 +720,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             _buildGoogleButton(),
           ],
         ),
-      ),
-    );
+      );
   }
 
   // ===========================================================================
