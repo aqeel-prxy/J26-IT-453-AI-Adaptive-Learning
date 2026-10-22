@@ -46,10 +46,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _fetchDashboardState();
       });
     } else if (index == 2) {
+      Navigator.pushNamed(context, AppRouter.question).then((_) {
+        if (mounted) setState(() => _currentNavIndex = 0);
+        _fetchDashboardState();
+      });
+    } else if (index == 3) {
       Navigator.pushNamed(context, AppRouter.gamification).then((_) {
         if (mounted) setState(() => _currentNavIndex = 0);
       });
-    } else if (index == 3) {
+    } else if (index == 4) {
       Navigator.pushNamed(context, AppRouter.profile).then((_) {
         if (mounted) setState(() => _currentNavIndex = 0);
         _fetchDashboardState();
@@ -246,6 +251,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.alt_route_outlined),
             selectedIcon: Icon(Icons.alt_route_rounded, color: AppTheme.primaryBlue),
             label: 'Pathway',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fact_check_outlined),
+            selectedIcon: Icon(Icons.fact_check_rounded, color: Color(0xFF0284C7)),
+            label: 'Error Diagnosis',
           ),
           NavigationDestination(
             icon: Icon(Icons.pets_outlined),
@@ -813,7 +823,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 tag: 'COMPONENT 4',
                 title: 'Error Diagnosis',
                 desc: '8-Category Misconceptions',
-                onTap: () => Navigator.pushNamed(context, AppRouter.submit),
+                onTap: () => Navigator.pushNamed(context, AppRouter.question),
               ),
             ),
           ],
