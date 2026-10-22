@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/multiplayer_models.dart';
-import 'student_setup_screen.dart';
 
 class StudentResultsScreen extends StatelessWidget {
   final MultiplayerRoom room;
@@ -16,7 +15,17 @@ class StudentResultsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sorted = List<RoomPlayer>.from(room.players)..sort((a, b) => b.score.compareTo(a.score));
+    // In teacher classroom mode, exclude the host teacher from student standings
+    final isTeacherRoom = room.roomType == 'TEACHER_CLASSROOM';
+    final participants = isTeacherRoom
+        ? room.players
+            .where((p) => !p.isHost && !p.name.toLowerCase().contains('(teacher)'))
+            .toList()
+        : List<RoomPlayer>.from(room.players);
+
+    final sorted = List<RoomPlayer>.from(participants.isNotEmpty ? participants : room.players)
+      ..sort((a, b) => b.score.compareTo(a.score));
+
     final myPlayer = sorted.firstWhere(
       (p) => p.playerId == currentPlayerId,
       orElse: () => sorted.first,
@@ -69,7 +78,7 @@ class StudentResultsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'You finished #$myRank of ${sorted.length} peers',
+                    'You finished #$myRank of ${sorted.length} ${sorted.length == 1 ? "peer" : "peers"}',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -220,35 +229,23 @@ class StudentResultsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // Rematch Button
+            // Return to Dashboard Action (Rematch is controlled by Host only)
             ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const StudentSetupScreen()),
-                );
-              },
+              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryBlue,
-                minimumSize: const Size(double.infinity, 50),
+                minimumSize: const Size(double.infinity, 52),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 2,
               ),
-              icon: const Icon(Icons.replay_rounded, color: Colors.white),
+              icon: const Icon(Icons.dashboard_rounded, color: Colors.white, size: 20),
               label: Text(
-                'Rematch • Play Again',
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            OutlinedButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: Text(
                 'Return to Dashboard',
-                style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],

@@ -574,8 +574,16 @@ class RoomManager:
                     "response_time_ms": bot_time_ms
                 }
 
-        # Re-sort players by score descending
-        room["players"].sort(key=lambda x: x["score"], reverse=True)
+        # In a TEACHER_CLASSROOM, leaderboard sent to students should exclude the teacher host
+        is_teacher_room = (room.get("room_type") == "TEACHER_CLASSROOM")
+        host_id = room.get("host_id")
+        if is_teacher_room:
+            visible_leaderboard = [
+                p for p in room["players"]
+                if not p.get("is_host") and p.get("player_id") != host_id and "(Teacher)" not in p.get("name", "")
+            ]
+        else:
+            visible_leaderboard = room["players"]
 
         return {
             "is_correct": is_correct,
@@ -583,7 +591,7 @@ class RoomManager:
             "correct_index": question["correct_index"],
             "explanation": question["explanation"],
             "updated_player": target_player,
-            "leaderboard": room["players"]
+            "leaderboard": visible_leaderboard
         }
 
     @classmethod
