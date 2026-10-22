@@ -57,17 +57,35 @@ class MathOCRService:
                     "error_message": "Image resolution is too low to reliably recognize mathematical characters. Please take a closer, clearer photograph."
                 }
 
-            # 1. Perform Real Native OCR
-            raw_ocr_text = cls._run_native_ocr(img)
+            # 1. Perform Real Native OCR on center reticle region and full image
+            raw_ocr_full = cls._run_native_ocr(img)
+            
+            # Reticle crop (aimed center area)
+            try:
+                crop_reticle = img.crop((int(width * 0.05), int(height * 0.20), int(width * 0.95), int(height * 0.85)))
+                raw_ocr_reticle = cls._run_native_ocr(crop_reticle)
+            except Exception:
+                raw_ocr_reticle = ""
 
-            # 2. Extract and format mathematical equation/statement
-            if raw_ocr_text and raw_ocr_text.strip():
-                extracted_question = cls.parse_equation_from_ocr_text(raw_ocr_text)
+            # 2. Extract equations from both and pick best candidate
+            eq_reticle = cls.parse_equation_from_ocr_text(raw_ocr_reticle) if raw_ocr_reticle else ""
+            eq_full = cls.parse_equation_from_ocr_text(raw_ocr_full) if raw_ocr_full else ""
+
+            # Prefer candidate with equals sign, math operators, or higher math density
+            extracted_question = ""
+            if eq_reticle and any(op in eq_reticle for op in ['=', '+', '-', '*', '/', '÷']):
+                extracted_question = eq_reticle
+            elif eq_full:
+                extracted_question = eq_full
+            elif eq_reticle:
+                extracted_question = eq_reticle
+
+            if extracted_question and extracted_question.strip():
                 detected_topic = cls._classify_topic(extracted_question)
                 return {
                     "success": True,
                     "extracted_question": extracted_question,
-                    "raw_text": raw_ocr_text.strip(),
+                    "raw_text": (raw_ocr_reticle or raw_ocr_full).strip(),
                     "detected_topic": detected_topic,
                     "confidence": 0.96,
                     "image_meta": {
@@ -121,35 +139,84 @@ class MathOCRService:
         """Parses and isolates the mathematical problem statement or equation from raw OCR output."""
         text = raw.strip()
 
-        # Remove leading list numbers e.g. "1. ", "(1) ", "Q1: "
+        # Standardize superscript & symbols
+        text = text.replace("²", "^2").replace("³", "^3")
+        text = text.replace("×", "*").replace("–", "-").replace("−", "-")
+
+        # Remove question number prefix like "1. ", "2) ", "Q1: ", "(a) "
         text = re.sub(r'^\s*(?:\d+[\.\)]|\([0-9a-zA-Z]+\)|[qQ]\d+[:\.]?)\s*', '', text)
 
-        # Pattern: "if <equation>, what is the value of x?"
-        m_if = re.search(r'if\s*([^,;\?]+)[,;\?]', text, re.I)
-        if m_if and '=' in m_if.group(1):
-            text = m_if.group(1)
-        else:
-            # Check for a line containing '=' and variable 'x'
-            for line in text.splitlines():
-                if '=' in line and 'x' in line.lower():
-                    text = line
-                    break
+        # Remove "if" prefix if immediately preceding equation or numbers/variables: e.g. "if6x-4" or "if 6x-4"
+        text = re.sub(r'\bif\s*(?=[0-9a-zA-Z])', '', text, flags=re.I)
 
-        # Remove trailing inquiry clauses
-        text = re.sub(r'[\?\.].*$', '', text)
-        text = re.sub(r'^(?:solve|evaluate|find x in|if)\s*[:\-]?\s*', '', text, flags=re.I)
-        text = re.sub(r'(?:what is the value of x|find the value of x|find x).*$', '', text, flags=re.I)
+        # Remove known conversational/UI prompt headers
+        ui_patterns = [
+            r'\bcan\s+you\s+solve\s+this[\?:]?',
+            r'\bsolve\s+this[\?:]?',
+            r'\bsolve\s+the\s+following[\?:]?',
+            r'\bmathematics\s+(?:problem\s+solver|p\s+so\s+i\s+ver)\b',
+            r'\bmathematical\s+question\s+input\b',
+            r'\b(?:uestion|question)\s+statement(?:\s+equa[^\s]*)?',
+            r'\b\d+\.\s*check\s+my\s+working(?:\s*\([^\)]*\))?',
+            r'\bcheck\s+my\s+working(?:\s*\([^\)]*\))?',
+            r'\bcapture\s+(?:question\s+)?camera\b',
+            r'\bupload\s+photo\b',
+            r'\buplo\S*photo\b',
+            r'\bwhat\s+is\s+the\s+value\s+of\s+[a-zA-Z][\?:]?',
+            r'\bvalue\s+of\s+[a-zA-Z][\?:]?',
+            r'\bfind\s+(?:the\s+value\s+of\s+)?[a-zA-Z][\?:]?',
+        ]
+        cleaned = text
+        for p in ui_patterns:
+            cleaned = re.sub(p, ' ', cleaned, flags=re.I)
 
-        # Clean math symbols
-        text = cls.clean_ocr_text(text)
+        # Search for equation patterns with '='
+        eq_regex = r'([0-9a-zA-Z\(\)\^²³\+\-\*\/\÷\:\s]+=\s*[0-9a-zA-Z\(\)\^²³\+\-\*\/\÷\s\?\.,]*)'
+        candidates = re.findall(eq_regex, cleaned)
 
-        # Normalize spaces around operators: '=', '+', '-'
-        text = re.sub(r'\s*([=+\-])\s*', r' \1 ', text)
+        # Search for expressions without '='
+        if not candidates:
+            expr_regex = r'(\b\d+[\s\+\-\*\/\÷\(\)\^²³xX]+[\d\(\)\^²³xX\)]+)'
+            candidates = re.findall(expr_regex, cleaned)
 
-        # Restore coefficient variable spacing (e.g. "6 x" -> "6x")
-        text = re.sub(r'(\d+)\s+([a-zA-Z])', r'\1\2', text)
+        if candidates:
+            scored = []
+            for cand in candidates:
+                c = cand.strip()
+                if not re.search(r'[\dxyzXYZ]', c):
+                    continue
+                math_chars = len(re.findall(r'[\d\+\-\*\/\÷\^\(\)\=xX]', c))
+                total_len = max(len(c.replace(' ', '')), 1)
+                density = math_chars / total_len
+                bonus = 2.0 if '=' in c else 1.0
+                if any(op in c for op in ['+', '-', '*', '/', '÷', '^', '(', ')']):
+                    bonus += 1.0
+                score = density * bonus * math_chars
+                scored.append((score, c))
 
-        return text.strip()
+            if scored:
+                scored.sort(key=lambda x: x[0], reverse=True)
+                best = scored[0][1]
+
+                if '=' in best:
+                    lhs, rhs = best.split('=', 1)
+                    # Find start of math in LHS (digits, variables, sign, or parenthesis)
+                    m_lhs = re.search(r'([+\-]?\s*(?:\b\d+[a-zA-Z0-9\^²³]*|\b[a-zA-Z]\b|\()[0-9a-zA-Z\s\(\)\^²³\+\-\*\/\÷\.]*)$', lhs.strip())
+                    clean_lhs = m_lhs.group(0).strip() if m_lhs else lhs.strip()
+
+                    # Find math in RHS up to English text or list numbers
+                    clean_rhs = rhs.strip()
+                    clean_rhs = re.sub(r'\b\d+\.\s*.*$', '', clean_rhs)
+                    clean_rhs = re.sub(r'\b[a-zA-Z]{2,}\b.*$', '', clean_rhs).strip()
+                    clean_rhs = clean_rhs.rstrip(',;.')
+
+                    if clean_rhs in ['', '?', 'x', 'X', '.']:
+                        best = f"{clean_lhs} ="
+                    else:
+                        best = f"{clean_lhs} = {clean_rhs}"
+                return best.strip()
+
+        return cleaned.strip()
 
     @classmethod
     def clean_ocr_text(cls, text: str) -> str:
@@ -157,17 +224,16 @@ class MathOCRService:
         s = text
         s = s.replace("²", "^2").replace("x2", "x²")
         s = s.replace("³", "^3").replace("x3", "x³")
-        s = s.replace("×", "*").replace("÷", "/")
-        s = s.replace("−", "-").replace("–", "-")
+        s = s.replace("×", "*").replace("–", "-").replace("−", "-")
         s = s.replace("+/-", "±")
         return s
 
     @classmethod
     def _classify_topic(cls, eq: str) -> str:
-        """Detects Grade 10-11 curriculum topic from equation string."""
+        """Detects curriculum topic from equation string."""
         eq_low = eq.lower()
         if "x^2" in eq_low or "x²" in eq_low:
             return "Quadratic Equations"
         elif "x" in eq_low:
             return "Linear Equations"
-        return "Algebraic Equations"
+        return "Order of Operations (BODMAS / Arithmetic)"

@@ -27,3 +27,31 @@ Future<PickedImageData?> pickImageFromGallery() async {
 Future<PickedImageData?> takePhotoFromCamera(BuildContext context) async {
   return null;
 }
+
+class CameraViewfinder extends StatelessWidget {
+  final ValueChanged<PickedImageData> onImageCaptured;
+  final VoidCallback onCancel;
+  final double height;
+  final bool isInline;
+
+  const CameraViewfinder({
+    super.key,
+    required this.onImageCaptured,
+    required this.onCancel,
+    this.height = 320,
+    this.isInline = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text('Camera viewfinder is not supported on this platform.'),
+    );
+  }
+}

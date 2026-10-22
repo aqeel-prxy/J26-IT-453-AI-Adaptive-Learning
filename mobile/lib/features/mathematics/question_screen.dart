@@ -22,6 +22,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
   String? _ocrNoticeMessage;
   String? _solverErrorMessage;
   bool _showWorkingBox = false;
+  bool _isCameraOpen = false;
 
   final List<String> _mathSymbols = [
     'x²', 'x³', '√', '±', '×', '÷', '^', '≠', '≤', '≥', 'π', '(', ')', '='
@@ -34,42 +35,52 @@ class _QuestionScreenState extends State<QuestionScreen> {
     super.dispose();
   }
 
-  Future<void> _handleImageInput({required bool useCamera}) async {
+  void _toggleCameraViewfinder() {
     if (_isOcrLoading || _isSubmitting) return;
-
     setState(() {
+      _isCameraOpen = !_isCameraOpen;
+      if (_isCameraOpen) {
+        _ocrErrorMessage = null;
+        _ocrNoticeMessage = null;
+      }
+    });
+  }
+
+  Future<void> _pickPhotoFromGallery() async {
+    if (_isOcrLoading || _isSubmitting) return;
+    if (_isCameraOpen) {
+      setState(() => _isCameraOpen = false);
+    }
+    final img = await pickImageFromGallery();
+    if (img != null) {
+      await _processPickedImage(img);
+    }
+  }
+
+  Future<void> _processPickedImage(PickedImageData img) async {
+    setState(() {
+      _pickedImage = img;
+      _isOcrLoading = true;
       _ocrErrorMessage = null;
       _ocrNoticeMessage = null;
       _solverErrorMessage = null;
     });
 
     try {
-      final img = useCamera
-          ? await takePhotoFromCamera(context)
-          : await pickImageFromGallery();
+      final ocrRes = await ErrorDiagnosisService.extractQuestionFromOCR(img.base64String);
 
-      if (img != null) {
-        setState(() {
-          _pickedImage = img;
-          _isOcrLoading = true;
-        });
-
-        // Run OCR with image data
-        final ocrRes = await ErrorDiagnosisService.extractQuestionFromOCR(img.base64String);
-
-        if (mounted) {
-          if (ocrRes['success'] == true && ocrRes['extracted_question'] != null) {
-            final extracted = (ocrRes['extracted_question'] as String).trim();
-            setState(() {
-              _questionController.text = extracted;
-              _ocrNoticeMessage = 'Question identified via OCR: "$extracted". Review or edit the equation below, then click "Solve Step-by-Step".';
-            });
-          } else {
-            setState(() {
-              _ocrErrorMessage = ocrRes['error_message'] ??
-                  'Could not reliably extract mathematical symbols from this image. Please capture a clearer photo or type the question manually.';
-            });
-          }
+      if (mounted) {
+        if (ocrRes['success'] == true && ocrRes['extracted_question'] != null) {
+          final extracted = (ocrRes['extracted_question'] as String).trim();
+          setState(() {
+            _questionController.text = extracted;
+            _ocrNoticeMessage = 'Question identified via OCR: "$extracted". Review or edit the equation below, then click "Solve Step-by-Step".';
+          });
+        } else {
+          setState(() {
+            _ocrErrorMessage = ocrRes['error_message'] ??
+                'Could not reliably extract mathematical symbols from this image. Please capture a clearer photo or type the question manually.';
+          });
         }
       }
     } catch (e) {
@@ -322,15 +333,21 @@ class _QuestionScreenState extends State<QuestionScreen> {
                         child: OutlinedButton.icon(
                           onPressed: (_isOcrLoading || _isSubmitting)
                               ? null
-                              : () => _handleImageInput(useCamera: true),
-                          icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                          label: const Text('Capture Camera'),
+                              : _toggleCameraViewfinder,
+                          icon: Icon(
+                            _isCameraOpen ? Icons.close : Icons.camera_alt_outlined,
+                            size: 18,
+                          ),
+                          label: Text(_isCameraOpen ? 'Close Camera' : 'Capture Camera'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF4338CA),
-                            side: const BorderSide(color: Color(0xFF818CF8)),
+                            foregroundColor: _isCameraOpen ? const Color(0xFFDC2626) : const Color(0xFF4338CA),
+                            side: BorderSide(
+                              color: _isCameraOpen ? const Color(0xFFF87171) : const Color(0xFF818CF8),
+                              width: _isCameraOpen ? 1.5 : 1.0,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 11),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            backgroundColor: const Color(0xFFEEF2FF),
+                            backgroundColor: _isCameraOpen ? const Color(0xFFFEF2F2) : const Color(0xFFEEF2FF),
                           ),
                         ),
                       ),
@@ -339,7 +356,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                         child: OutlinedButton.icon(
                           onPressed: (_isOcrLoading || _isSubmitting)
                               ? null
-                              : () => _handleImageInput(useCamera: false),
+                              : _pickPhotoFromGallery,
                           icon: const Icon(Icons.photo_library_outlined, size: 18),
                           label: const Text('Upload Photo'),
                           style: OutlinedButton.styleFrom(
@@ -353,6 +370,27 @@ class _QuestionScreenState extends State<QuestionScreen> {
                       ),
                     ],
                   ),
+
+                  // Inline Live Camera Viewfinder
+                  if (_isCameraOpen) ...[
+                    const SizedBox(height: 14),
+                    CameraViewfinder(
+                      isInline: true,
+                      height: 240,
+                      onImageCaptured: (capturedImage) {
+                        setState(() {
+                          _isCameraOpen = false;
+                        });
+                        _processPickedImage(capturedImage);
+                      },
+                      onCancel: () {
+                        setState(() {
+                          _isCameraOpen = false;
+                        });
+                      },
+                    ),
+                  ],
+
                   const SizedBox(height: 14),
 
                   // Image Preview if picked

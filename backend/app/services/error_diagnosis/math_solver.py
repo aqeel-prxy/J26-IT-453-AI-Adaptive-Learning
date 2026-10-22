@@ -28,7 +28,7 @@ class MathSolver:
         s = s.replace("×", "*").replace("÷", "/")
         s = s.replace("−", "-").replace("–", "-")
         # Strip common instruction prefixes
-        s = re.sub(r'^(?:solve|find x in|factorise and solve|evaluate|calculate)\s*[:\-]?\s*', '', s, flags=re.I)
+        s = re.sub(r'^(?:solve(?:\s+for\s+[a-zA-Z])?|find\s+(?:the\s+value\s+of\s+)?[a-zA-Z]|factorise\s+and\s+solve|evaluate|calculate)\s*[:\-]?\s*', '', s, flags=re.I)
         return s.strip()
 
     @classmethod
@@ -59,14 +59,25 @@ class MathSolver:
                     "error_message": f"The topic containing '{kw}' is outside the Grade 10-11 syllabus supported by this solver. Please enter a linear or quadratic algebra equation."
                 }
 
-        # Must contain variable x
+        # If question does not contain variable x, check if it's an arithmetic evaluation (e.g. 6 ÷ 2(1+2) =) or an unsupported non-variable equation (e.g. 5 + 3 = 8)
         if "x" not in lower_q:
-            return {
-                "success": False,
-                "supported": False,
-                "question": question_text,
-                "error_message": "The problem must contain variable 'x' to be solved (e.g. 2(x + 3) = 14 or 2x² + 5x - 3 = 0)."
-            }
+            is_eval = False
+            if "=" not in cleaned or cleaned.rstrip().endswith("="):
+                is_eval = True
+            elif "=" in cleaned:
+                _, rhs_part = cleaned.split("=", 1)
+                if rhs_part.strip() in ["", "?", "."]:
+                    is_eval = True
+
+            if is_eval and re.search(r'\d', cleaned):
+                return cls._solve_arithmetic_expression(question_text, cleaned)
+            else:
+                return {
+                    "success": False,
+                    "supported": False,
+                    "question": question_text,
+                    "error_message": "The problem must contain variable 'x' to be solved (e.g. 2(x + 3) = 14 or 2x² + 5x - 3 = 0)."
+                }
 
         # Ensure equality sign is present or implied
         if "=" not in cleaned:
@@ -127,6 +138,93 @@ class MathSolver:
             "supported": False,
             "question": question_text,
             "error_message": "Unsupported equation type."
+        }
+
+    @classmethod
+    def _solve_arithmetic_expression(cls, original_q: str, cleaned_q: str) -> Dict[str, Any]:
+        """
+        Solves arithmetic questions using standard Order of Operations (BODMAS / PEMDAS).
+        Supports expressions like 6 ÷ 2(1 + 2) =, 6 + 2(1 + 2) =, (3 + 5) * 4, etc.
+        """
+        expr_str = cleaned_q.replace("=", "").strip()
+        expr_str = cls.clean_math_text(expr_str)
+
+        # Standardize implicit multiplication: e.g. 2(1+2) -> 2*(1+2), )3 -> )*3, )( -> )*(
+        norm_expr = re.sub(r'(\d)\s*\(', r'\1*(', expr_str)
+        norm_expr = re.sub(r'\)\s*\(', r')*(', norm_expr)
+        norm_expr = re.sub(r'\)\s*(\d)', r')*\1', norm_expr)
+        norm_expr = norm_expr.replace("÷", "/").replace("×", "*").replace("^", "**")
+
+        try:
+            result = sp.sympify(norm_expr)
+        except Exception:
+            return {
+                "success": False,
+                "supported": False,
+                "question": original_q,
+                "error_message": "Could not evaluate arithmetic expression. Please verify parentheses and operators."
+            }
+
+        steps = []
+        step_idx = 1
+
+        # Check for parentheses / brackets
+        brackets = re.findall(r'\(([^\(\)]+)\)', expr_str)
+        subbed = expr_str
+        if brackets:
+            bracket_details = []
+            for b in brackets:
+                b_norm = re.sub(r'(\d)\s*\(', r'\1*(', b)
+                b_norm = b_norm.replace("÷", "/").replace("×", "*").replace("^", "**")
+                try:
+                    b_val = sp.sympify(b_norm)
+                    bracket_details.append(f"({b}) = {b_val}")
+                    subbed = re.sub(r'(\d)\s*\(' + re.escape(b) + r'\)', r'\1 × ' + str(b_val), subbed)
+                    subbed = subbed.replace(f"({b})", str(b_val))
+                except Exception:
+                    pass
+            if bracket_details:
+                steps.append({
+                    "step_number": step_idx,
+                    "expression": subbed,
+                    "explanation": "Step 1 (Brackets): Evaluate the expression inside parentheses first according to BODMAS rules: " + ", ".join(bracket_details) + "."
+                })
+                step_idx += 1
+
+        # If expression had division or multiplication, explain order of operations
+        if "÷" in expr_str or "/" in expr_str or "*" in expr_str or "×" in expr_str:
+            if ("÷" in expr_str or "/" in expr_str) and ("*" in expr_str or "×" in expr_str or "(" in expr_str):
+                steps.append({
+                    "step_number": step_idx,
+                    "expression": f"= {result}",
+                    "explanation": "Step 2 (Division & Multiplication): Under standard modern BODMAS / PEMDAS rules, division and multiplication share equal precedence and are performed from left to right."
+                })
+                step_idx += 1
+            else:
+                steps.append({
+                    "step_number": step_idx,
+                    "expression": f"= {result}",
+                    "explanation": "Step 2: Evaluate the arithmetic operations following BODMAS precedence (multiplication and division first, then addition and subtraction)."
+                })
+                step_idx += 1
+        else:
+            steps.append({
+                "step_number": step_idx,
+                "expression": f"= {result}",
+                "explanation": "Compute the final arithmetic value."
+            })
+            step_idx += 1
+
+        final_ans = str(int(result)) if (hasattr(result, "is_integer") and result.is_integer) else str(result)
+
+        return {
+            "success": True,
+            "supported": True,
+            "question": original_q,
+            "topic": "Order of Operations (BODMAS / Arithmetic)",
+            "final_answer": final_ans,
+            "steps": steps,
+            "roots": [final_ans]
         }
 
     @classmethod
@@ -370,19 +468,22 @@ class MathSolver:
     @classmethod
     def check_student_working(cls, question_text: str, solution_steps_text: str) -> Dict[str, Any]:
         """
-        Evaluates the student's own step-by-step working:
-        1. Solves the benchmark question to know the verified roots.
-        2. Evaluates each intermediate line mathematically using symbolic equivalence.
-        3. Identifies the first incorrect line if an error exists.
-        4. Classifies error taxonomy (Sign Error, Arithmetic Error, Expansion Error, Incomplete).
-        5. Does not penalize valid alternative methods.
+        Evaluates the student's own step-by-step working using consecutive transformation verification.
+        1. Solves the benchmark question to know verified roots and reference derivation.
+        2. Evaluates each intermediate line against the preceding step and problem constraints.
+        3. Distinguishes equivalent transformations from operations that change the solution set,
+           introduce extraneous roots, or lose valid solutions.
+        4. Detects specific error categories (Sign, Calculation, Expansion, Factorization, Formula, Procedural).
+        5. Does not rely only on root substitution; verifies consecutive mathematical transformation validity.
+        6. Handles ambiguous notation, incomplete working, and uncertain diagnoses explicitly.
+        7. Returns structured feedback: affected step, error category, explanation, rationale, hint, and action.
         """
         solved = cls.solve_question(question_text)
         if not solved.get("success"):
             return {
                 "is_correct": False,
                 "question": question_text,
-                "explanation_text": f"Cannot evaluate working: {solved.get('error_message')}",
+                "explanation_text": f"Cannot evaluate working: {solved.get('error_message', 'Unsupported question')}",
                 "is_ambiguous": True,
                 "uncertainty_notice": "The underlying question could not be verified by the math engine.",
                 "correct_steps": []
@@ -391,6 +492,7 @@ class MathSolver:
         correct_roots = solved.get("roots", [])
         final_answer = solved.get("final_answer", "")
         correct_steps = solved.get("steps", [])
+        topic = solved.get("topic", "")
         x = sp.Symbol('x')
 
         if not solution_steps_text or not solution_steps_text.strip():
@@ -399,88 +501,350 @@ class MathSolver:
                 "question": question_text,
                 "failed_step_index": 1,
                 "error_category": "Incomplete Working",
-                "explanation_text": "No intermediate steps were provided. Please write each derivation line on a new line.",
+                "explanation_text": "No intermediate steps were provided. Please write each derivation step on a new line.",
                 "evidence": "Empty solution input.",
+                "mathematical_rationale": "Solving an algebraic equation requires demonstrating intermediate logical transformations.",
+                "guided_hint": "Start by writing down the initial equation or standard form on the first line.",
+                "recommended_action": "Write your first step and submit again.",
                 "final_answer": final_answer,
                 "correct_steps": correct_steps
             }
 
         lines = [line.strip() for line in solution_steps_text.strip().split("\n") if line.strip()]
 
-        # Line-by-line verification
+        # -------------------------------------------------------------
+        # Branch A: Arithmetic expressions (Order of Operations / BODMAS)
+        # -------------------------------------------------------------
+        if "BODMAS" in topic or "Arithmetic" in topic or "x" not in question_text.lower():
+            try:
+                target_val = sp.sympify(final_answer)
+            except Exception:
+                target_val = None
+
+            for idx, line in enumerate(lines, start=1):
+                clean_line = cls.clean_math_text(line).lstrip("=").strip()
+                norm_expr = re.sub(r'(\d)\s*\(', r'\1*(', clean_line)
+                norm_expr = re.sub(r'\)\s*\(', r')*(', norm_expr)
+                norm_expr = re.sub(r'\)\s*(\d)', r')*\1', norm_expr)
+                norm_expr = norm_expr.replace("÷", "/").replace("×", "*").replace("^", "**")
+
+                try:
+                    step_val = sp.sympify(norm_expr)
+                except Exception:
+                    return {
+                        "is_correct": False,
+                        "question": question_text,
+                        "failed_step_index": idx,
+                        "error_category": "Ambiguous / Syntax Error",
+                        "is_ambiguous": True,
+                        "uncertainty_notice": "Unable to safely parse arithmetic symbols in this line.",
+                        "explanation_text": f"In Line {idx}: Unrecognized arithmetic syntax in '{line}'.",
+                        "evidence": f"Expression '{clean_line}' could not be parsed.",
+                        "guided_hint": "Check operators (+, -, *, /) and matching parentheses.",
+                        "final_answer": final_answer,
+                        "correct_steps": correct_steps
+                    }
+
+                if target_val is not None and sp.simplify(step_val - target_val) != 0:
+                    # Line is incorrect
+                    # Distinguish BODMAS precedence error from arithmetic slip
+                    err_cat = "Procedural Error (BODMAS Precedence)"
+                    if "(" in question_text and "(" not in line:
+                        explanation = f"In Line {idx}: Order of operations error. Evaluate expressions inside brackets first according to BODMAS rules."
+                    elif "÷" in question_text or "/" in question_text:
+                        explanation = f"In Line {idx}: Order of operations error. Division and multiplication share equal precedence and must be evaluated from left to right."
+                    else:
+                        err_cat = "Calculation Error"
+                        explanation = f"In Line {idx}: Arithmetic calculation error. The evaluated value does not equal the verified result."
+
+                    return {
+                        "is_correct": False,
+                        "question": question_text,
+                        "failed_step_index": idx,
+                        "error_category": err_cat,
+                        "explanation_text": explanation,
+                        "evidence": f"Line evaluates to {step_val}, expected progression towards {final_answer}.",
+                        "mathematical_rationale": "BODMAS dictates operations order: Brackets, Orders, Division & Multiplication (left-to-right), Addition & Subtraction.",
+                        "guided_hint": "Recalculate this step following strict left-to-right precedence.",
+                        "corrected_step": f"= {final_answer}",
+                        "final_answer": final_answer,
+                        "correct_steps": correct_steps
+                    }
+
+            # If all arithmetic lines evaluate correctly, verify final value
+            last_clean = cls.clean_math_text(lines[-1]).lstrip("=").strip()
+            if target_val is not None:
+                try:
+                    last_val = sp.sympify(last_clean.replace("÷", "/").replace("×", "*").replace("^", "**"))
+                    if sp.simplify(last_val - target_val) == 0:
+                        return {
+                            "is_correct": True,
+                            "question": question_text,
+                            "final_answer": final_answer,
+                            "explanation_text": "Great work! All your intermediate arithmetic steps follow correct BODMAS precedence and lead to the right answer.",
+                            "evidence": "All steps preserve numerical equivalence.",
+                            "correct_steps": correct_steps
+                        }
+                except Exception:
+                    pass
+
+        # -------------------------------------------------------------
+        # Branch B: Algebraic equations with variable x
+        # -------------------------------------------------------------
+        # 1. Establish initial polynomial state from original question: P_0(x) = LHS - RHS = 0
+        orig_cleaned = cls.clean_math_text(question_text)
+        if "=" in orig_cleaned:
+            q_lhs, q_rhs = orig_cleaned.split("=", 1)
+        else:
+            q_lhs, q_rhs = orig_cleaned, "0"
+
+        try:
+            prev_poly = sp.expand(sp.sympify(cls._to_sympy_expr_str(q_lhs), locals={'x': x}) -
+                                  sp.sympify(cls._to_sympy_expr_str(q_rhs), locals={'x': x}))
+        except Exception:
+            prev_poly = None
+
+        sym_roots = []
+        for r_str in correct_roots:
+            try:
+                sym_roots.append(sp.sympify(r_str))
+            except Exception:
+                pass
+
         first_error_idx = None
         error_category = None
         explanation = None
         corrected_step = None
         evidence = None
+        math_rationale = None
+        guided_hint = None
+        recommended_action = None
+        is_ambiguous = False
+        uncertainty_notice = None
 
         for idx, line in enumerate(lines, start=1):
             line_clean = cls.clean_math_text(line)
-            
-            # Check for sign transposition error: factor (x + k) = 0 => x = +k
-            line_no_space = line_clean.replace(" ", "").lower()
-            for r_str in correct_roots:
-                try:
-                    r_val = sp.sympify(r_str)
-                    if r_val.is_real and r_val < 0:
-                        pos_k = abs(int(r_val)) if r_val.is_integer else abs(float(r_val))
-                        # If student wrote x = pos_k when it should be negative
-                        if f"x={pos_k}" in line_no_space and f"x=-{pos_k}" not in line_no_space:
-                            first_error_idx = idx
-                            error_category = "Sign Error"
-                            explanation = f"In Line {idx}: Sign error when transposing across the equals sign. Equating factor (x + {pos_k}) = 0 yields x = -{pos_k}, not +{pos_k}."
-                            evidence = f"Line contains 'x = {pos_k}', but root is -{pos_k}."
-                            corrected_step = f"x = -{pos_k}"
-                            break
-                    elif r_val.is_real and r_val > 0:
-                        pos_k = int(r_val) if r_val.is_integer else float(r_val)
-                        if f"x=-{pos_k}" in line_no_space and f"x={pos_k}" not in line_no_space:
-                            first_error_idx = idx
-                            error_category = "Sign Error"
-                            explanation = f"In Line {idx}: Sign error. Equating (x - {pos_k}) = 0 yields x = {pos_k}, not -{pos_k}."
-                            evidence = f"Line contains 'x = -{pos_k}', but root is +{pos_k}."
-                            corrected_step = f"x = {pos_k}"
-                            break
-                except Exception:
-                    pass
 
-            if first_error_idx:
+            # Whitelist check for safe algebraic syntax
+            if re.search(r'[^0-9a-zA-Z\s\+\-\*\/\^\(\)\.\,\=\:\;]', line_clean) or any(
+                bad in line_clean.lower() for bad in ['import', 'exec', 'eval', 'lambda', '__', 'def ']
+            ):
+                first_error_idx = idx
+                error_category = "Ambiguous / Syntax Error"
+                is_ambiguous = True
+                uncertainty_notice = "Unrecognized mathematical symbols or invalid syntax detected."
+                explanation = f"In Line {idx}: Could not safely parse mathematical syntax in '{line}'."
+                evidence = f"Line contains invalid characters or unsupported formatting."
+                guided_hint = "Use standard algebraic symbols: numbers, +, -, *, /, x, and parentheses."
+                recommended_action = "Review line syntax and resubmit."
                 break
 
-            # Check equation line mathematical equivalence
+            # Check for disjunctive branches (e.g. 'x = 1/2 or x = 3', 'x = -2, x = -3', '2x - 1 = 0 or x + 3 = 0')
+            branches = [b.strip() for b in re.split(r'\b(?:or|and)\b|[,;]', line_clean) if b.strip()]
+
+            # Sub-check: Root statements (e.g. 'x = 1/2 or x = 3' or 'x = 4')
+            is_root_declaration = len(branches) > 0 and all(
+                re.match(r'^[a-zA-Z]\s*=\s*[+\-]?\s*\d+(?:\.\d+)?(?:/\d+)?$', b) for b in branches
+            )
+
+            if is_root_declaration:
+                cand_roots = []
+                for b in branches:
+                    m = re.search(r'[a-zA-Z]\s*=\s*([+\-]?\s*\d+(?:\.\d+)?(?:/\d+)?)', b)
+                    if m:
+                        try:
+                            cand_roots.append(sp.sympify(m.group(1).replace(" ", "")))
+                        except Exception:
+                            pass
+
+                # Check if any stated root has a sign error
+                sign_err_found = False
+                for cr in cand_roots:
+                    # If candidate root is not in verified roots, but its negation is
+                    if not any(sp.simplify(cr - r) == 0 for r in sym_roots):
+                        matching_neg = next((r for r in sym_roots if sp.simplify(cr + r) == 0 and r != 0), None)
+                        if matching_neg is not None:
+                            first_error_idx = idx
+                            error_category = "Sign Error"
+                            explanation = f"In Line {idx}: Sign error when transposing across the equals sign. Equating linear factor yields x = {matching_neg}, not x = {cr}."
+                            evidence = f"Line states 'x = {cr}', but verified root is {matching_neg}."
+                            math_rationale = f"When transposing a term across the equals sign, the sign reverses: (x - {matching_neg}) = 0 implies x = {matching_neg}."
+                            guided_hint = f"Check the signs when moving constants across the equals sign."
+                            recommended_action = f"Write x = {matching_neg} instead of x = {cr}."
+                            corrected_step = final_answer
+                            sign_err_found = True
+                            break
+                        else:
+                            # Not a sign flip, but an incorrect root value
+                            first_error_idx = idx
+                            error_category = "Calculation Error"
+                            explanation = f"In Line {idx}: Calculation error. The value x = {cr} does not satisfy the original equation."
+                            evidence = f"Value x = {cr} is not a valid root."
+                            math_rationale = f"Verified roots for this equation are {final_answer}."
+                            guided_hint = "Double-check your division or factoring arithmetic."
+                            recommended_action = f"Conclude with the verified roots: {final_answer}."
+                            corrected_step = final_answer
+                            sign_err_found = True
+                            break
+
+                if sign_err_found:
+                    break
+
+                # If all candidate roots match verified roots
+                if len(cand_roots) == len(sym_roots) and all(any(sp.simplify(cr - r) == 0 for r in sym_roots) for cr in cand_roots):
+                    # Roots are valid and complete!
+                    continue
+                elif len(cand_roots) < len(sym_roots) and idx == len(lines):
+                    first_error_idx = idx
+                    error_category = "Incomplete Working"
+                    explanation = f"In Line {idx}: Incomplete roots. A quadratic equation has two roots, but only {len(cand_roots)} was given."
+                    evidence = f"Provided: {cand_roots}, Expected: {final_answer}."
+                    guided_hint = f"State both roots: {final_answer}."
+                    corrected_step = final_answer
+                    break
+
+            # Sub-check: Linear factor branching (Zero-Product Property, e.g. '2x - 1 = 0 or x + 3 = 0')
+            is_factor_branching = len(branches) > 1 and all("=" in b for b in branches)
+            if is_factor_branching:
+                branch_factors = []
+                branch_parse_ok = True
+                for b in branches:
+                    b_l, b_r = b.split("=", 1)
+                    try:
+                        bf = sp.expand(sp.sympify(cls._to_sympy_expr_str(b_l), locals={'x': x}) -
+                                       sp.sympify(cls._to_sympy_expr_str(b_r), locals={'x': x}))
+                        branch_factors.append(bf)
+                    except Exception:
+                        branch_parse_ok = False
+                        break
+
+                if branch_parse_ok and branch_factors:
+                    product_poly = sp.expand(branch_factors[0] * branch_factors[1])
+                    if prev_poly is not None:
+                        diff = sp.simplify(product_poly - prev_poly)
+                        ratio = sp.simplify(product_poly / prev_poly)
+                        if diff == 0 or (ratio.is_number and ratio != 0):
+                            # Valid application of zero-product property
+                            prev_poly = product_poly
+                            continue
+                        else:
+                            # Factors do not multiply to previous polynomial
+                            first_error_idx = idx
+                            # Check if it was a sign flip in factors
+                            neg_product = sp.expand((-branch_factors[0]) * branch_factors[1])
+                            if sp.simplify(neg_product - prev_poly) == 0 or any(
+                                abs(sp.Poly(product_poly, x).all_coeffs()[-1]) == abs(sp.Poly(prev_poly, x).all_coeffs()[-1])
+                            ):
+                                error_category = "Sign Error"
+                                explanation = f"In Line {idx}: Sign error in linear factors. The linear factors do not multiply back to the original equation."
+                            else:
+                                error_category = "Factorization Error"
+                                explanation = f"In Line {idx}: Factorization error. Setting '{line}' does not match the factors of the quadratic equation."
+
+                            evidence = f"Product of factors {product_poly} != {prev_poly}."
+                            math_rationale = "The zero-product property requires that (ax + b)(cx + d) = 0 splits into exact factors ax + b = 0 or cx + d = 0."
+                            guided_hint = "Verify the signs and coefficients of your linear factors."
+                            corrected_step = correct_steps[min(idx - 1, len(correct_steps) - 1)]["expression"] if correct_steps else final_answer
+                            break
+
+            # Sub-check: Standard progressive equation line (LHS = RHS)
             if "=" in line_clean:
                 l_part, r_part = line_clean.split("=", 1)
                 try:
-                    prep_l = cls._to_sympy_expr_str(l_part)
-                    prep_r = cls._to_sympy_expr_str(r_part)
-                    line_expr = sp.expand(sp.sympify(prep_l) - sp.sympify(prep_r))
-                    
-                    # Verify if this step is satisfied by all correct roots
-                    # For a valid step, substituting the correct roots must yield 0
-                    is_line_valid = True
-                    for r_str in correct_roots:
-                        sub_val = sp.sympify(line_expr).subs(x, sp.sympify(r_str))
-                        if sp.simplify(sub_val) != 0:
-                            is_line_valid = False
-                            break
+                    curr_lhs = sp.sympify(cls._to_sympy_expr_str(l_part), locals={'x': x})
+                    curr_rhs = sp.sympify(cls._to_sympy_expr_str(r_part), locals={'x': x})
+                    curr_poly = sp.expand(curr_lhs - curr_rhs)
+                except Exception:
+                    # Could not parse line
+                    first_error_idx = idx
+                    error_category = "Ambiguous / Syntax Error"
+                    is_ambiguous = True
+                    uncertainty_notice = "Could not parse intermediate algebraic expression."
+                    explanation = f"In Line {idx}: Syntax error in equation '{line}'."
+                    evidence = f"Unable to parse LHS or RHS into symbolic form."
+                    break
 
-                    if not is_line_valid:
-                        first_error_idx = idx
-                        # Determine category
-                        if "(" in l_part and ")" in l_part:
-                            error_category = "Expansion / Factorization Error"
-                            explanation = f"In Line {idx}: The algebraic expansion or factorization does not preserve equality with the roots."
-                        else:
-                            error_category = "Arithmetic / Transformation Error"
-                            explanation = f"In Line {idx}: Transformation error. The algebraic expression on this line is not mathematically equivalent to the original equation."
-                        evidence = f"Substituting verified root into '{line}' does not yield equality."
-                        corrected_step = correct_steps[min(idx - 1, len(correct_steps) - 1)]["expression"] if correct_steps else None
+                if prev_poly is None:
+                    prev_poly = curr_poly
+                    continue
+
+                # 1. Consecutive Equivalence Verification
+                diff = sp.simplify(curr_poly - prev_poly)
+                ratio = sp.simplify(curr_poly / prev_poly) if prev_poly != 0 else None
+                is_equiv = (diff == 0) or (ratio is not None and ratio.is_number and ratio != 0)
+
+                if is_equiv:
+                    # Valid step!
+                    prev_poly = curr_poly
+                    continue
+
+                # 2. Step is NOT equivalent — diagnose the exact mathematical failure
+                first_error_idx = idx
+                deg_curr = sp.Poly(curr_poly, x).degree() if "x" in str(curr_poly) else 0
+                deg_prev = sp.Poly(prev_poly, x).degree() if "x" in str(prev_poly) else 0
+
+                # Check A: Extraneous solutions introduced (degree jump)
+                if deg_curr > deg_prev:
+                    error_category = "Invalid Algebraic Transformation"
+                    explanation = f"In Line {idx}: Extraneous solutions introduced. The transformation increases the equation degree from {deg_prev} to {deg_curr}."
+                    evidence = f"Line '{line}' has degree {deg_curr}, exceeding original problem degree {deg_prev}."
+                    math_rationale = "Algebraic transformations must preserve the exact solution set without introducing extraneous roots."
+                    guided_hint = "Do not multiply the equation by an unnecessary polynomial expression."
+                    corrected_step = correct_steps[min(idx - 1, len(correct_steps) - 1)]["expression"] if correct_steps else final_answer
+                    break
+
+                # Check B: Lost solutions (degree drop without disjunction)
+                if deg_curr < deg_prev and deg_prev > 1:
+                    error_category = "Procedural Error (Lost Solution)"
+                    explanation = f"In Line {idx}: Procedural error. Dividing by variable x eliminates valid roots (degree dropped from {deg_prev} to {deg_curr})."
+                    evidence = f"Equation degree reduced from {deg_prev} to {deg_curr}."
+                    math_rationale = "Do not divide an equation by a variable factor that can equal zero, as this permanently eliminates solutions."
+                    guided_hint = "Factor out the common variable term instead of dividing by it."
+                    corrected_step = correct_steps[min(idx - 1, len(correct_steps) - 1)]["expression"] if correct_steps else final_answer
+                    break
+
+                # Check C & D: Transposition sign error vs Expansion error vs Calculation error
+                try:
+                    poly_c = sp.Poly(curr_poly, x)
+                    poly_p = sp.Poly(prev_poly, x)
+                    coeffs_c = poly_c.all_coeffs()
+                    coeffs_p = poly_p.all_coeffs()
+
+                    had_brackets_to_expand = ("(" in l_part or "(" in r_part) or (idx == 1 and "(" in orig_cleaned) or (idx > 1 and "(" in lines[idx - 2])
+
+                    if had_brackets_to_expand and (idx == 1 or ("(" in lines[idx - 2] and "(" not in line_clean)):
+                        error_category = "Expansion Error"
+                        explanation = f"In Line {idx}: Distributive property error. Terms inside parentheses were not multiplied correctly."
+                        evidence = f"Expanding parentheses in '{line}' yields {curr_poly} != {prev_poly}."
+                        math_rationale = "The distributive law a(b + c) = ab + ac requires multiplying every term inside parentheses."
+                        guided_hint = "Ensure the multiplier outside brackets multiplies every term inside."
+                        corrected_step = correct_steps[min(idx - 1, len(correct_steps) - 1)]["expression"] if correct_steps else final_answer
+                        break
+                    elif len(coeffs_c) == len(coeffs_p) and coeffs_c[:-1] == coeffs_p[:-1]:
+                        # Variable coefficients match, but constant term differs
+                        error_category = "Sign Error"
+                        explanation = f"In Line {idx}: Sign error when transposing terms across the equals sign."
+                        evidence = f"Constant term in '{line}' reflects an inverted transposition sign."
+                        math_rationale = "When moving a term across the equals sign, its sign reverses (+ becomes -, and - becomes +)."
+                        guided_hint = "Check the sign of the constant term when moving it to the opposite side."
+                        corrected_step = correct_steps[min(idx - 1, len(correct_steps) - 1)]["expression"] if correct_steps else final_answer
+                        break
+                    else:
+                        error_category = "Arithmetic / Transformation Error"
+                        explanation = f"In Line {idx}: Transformation error. The equation on this line is not mathematically equivalent to the previous step."
+                        evidence = f"Simplifying '{line}' yields {curr_poly} = 0, which does not equal {prev_poly} = 0."
+                        math_rationale = "Each progressive equation line must preserve mathematical equivalence."
+                        guided_hint = "Check your algebraic operations on both sides of the equation."
+                        corrected_step = correct_steps[min(idx - 1, len(correct_steps) - 1)]["expression"] if correct_steps else final_answer
                         break
                 except Exception:
-                    # Ignore minor formatting if it's the final line with 'or'
-                    pass
+                    error_category = "Arithmetic / Transformation Error"
+                    explanation = f"In Line {idx}: The algebraic expression on this line is not equivalent to the previous step."
+                    evidence = f"Transformation does not preserve equality."
+                    corrected_step = correct_steps[min(idx - 1, len(correct_steps) - 1)]["expression"] if correct_steps else final_answer
+                    break
 
-        # Check final line for roots
+        # Check conclusion if no step error was flagged during loop
         if not first_error_idx:
             last_line = lines[-1].replace(" ", "").lower()
             all_roots_present = True
@@ -506,7 +870,10 @@ class MathSolver:
                     "question": question_text,
                     "final_answer": final_answer,
                     "explanation_text": "Great work! All your intermediate mathematical derivation steps are valid and lead to the correct answer.",
-                    "evidence": "All lines preserve mathematical equivalence and verified roots are reached.",
+                    "evidence": "Consecutive step transformations preserve mathematical equivalence and verified roots are reached.",
+                    "mathematical_rationale": "Every consecutive transformation preserves the algebraic solution set.",
+                    "guided_hint": "Proceed to the next question or practice topic.",
+                    "recommended_action": "Continue with your adaptive learning pathway.",
                     "correct_steps": correct_steps
                 }
             else:
@@ -514,6 +881,9 @@ class MathSolver:
                 error_category = "Incomplete / Incorrect Conclusion"
                 explanation = f"In Line {len(lines)}: The solution does not conclude with the verified roots. Expected: {final_answer}."
                 evidence = f"Last line '{lines[-1]}' does not match expected result."
+                math_rationale = f"A complete mathematical solution must conclude with the verified values for variable x: {final_answer}."
+                guided_hint = f"State the final values of x: {final_answer}."
+                recommended_action = f"Complete the working by stating: {final_answer}."
                 corrected_step = final_answer
 
         return {
@@ -524,6 +894,11 @@ class MathSolver:
             "explanation_text": explanation or "A mathematical error was detected in your solution.",
             "corrected_step": corrected_step,
             "evidence": evidence,
+            "mathematical_rationale": math_rationale,
+            "guided_hint": guided_hint,
+            "recommended_action": recommended_action,
+            "is_ambiguous": is_ambiguous,
+            "uncertainty_notice": uncertainty_notice,
             "final_answer": final_answer,
             "correct_steps": correct_steps
         }

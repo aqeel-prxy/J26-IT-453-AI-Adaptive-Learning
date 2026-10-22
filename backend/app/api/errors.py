@@ -92,7 +92,10 @@ def check_student_working(request: CheckWorkingRequest):
         evidence=res.get("evidence"),
         is_ambiguous=res.get("is_ambiguous", False),
         uncertainty_notice=res.get("uncertainty_notice"),
-        correct_steps=structured_steps
+        correct_steps=structured_steps,
+        mathematical_rationale=res.get("mathematical_rationale"),
+        guided_hint=res.get("guided_hint"),
+        recommended_action=res.get("recommended_action")
     )
 
 

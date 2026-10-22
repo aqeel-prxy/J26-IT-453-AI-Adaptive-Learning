@@ -3,11 +3,12 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database.session import get_db
-from app.models import Attempt, ErrorDiagnosis, LearnerProfile, StudentEngagement
+from app.models import Attempt, ErrorDiagnosis, LearnerProfile, StudentEngagement, Question
 from app.schemas.mathematics import (
     ConceptResponse, TopicCategoryResponse, AttemptSubmitRequest, AdaptiveAttemptResponse
 )
-from app.services.error_diagnosis.error_stub import ErrorDiagnosisStub
+from app.services.error_diagnosis.math_solver import MathSolver
+from app.services.error_diagnosis.question_generator import SimilarQuestionService
 from app.services.learner.learner_stub import LearnerProfilingStub
 from app.services.representation.representation_stub import RepresentationStub
 from app.services.engagement.engagement_stub import EngagementStub
@@ -53,17 +54,49 @@ def get_concept(concept_id: UUID):
 def submit_attempt(request: AttemptSubmitRequest, db: Session = Depends(get_db)):
     """
     Submits a student answer attempt.
-    Coordinates between component development stubs and persists attempt state:
-    - Component 4 Error Diagnosis
+    Coordinates between component real implementations / stubs and persists attempt state:
+    - Component 4 Error Diagnosis (Real MathSolver symbolic engine)
     - Component 2 Learner Profiling
     - Component 1 Representation Selection
     - Component 3 Engagement & Feedback
     """
     attempt_id = uuid4()
     
-    # 1. Error Diagnosis Stub (Component 4)
-    diag = ErrorDiagnosisStub.analyze_solution(request.question_id, request.student_solution)
-    is_correct = diag["is_correct"]
+    # 1. Error Diagnosis (Component 4) - Real Symbolic MathSolver & Step Verification
+    question_text = None
+    try:
+        db_question = db.query(Question).filter(Question.id == request.question_id).first()
+        if db_question:
+            question_text = db_question.question_text
+    except Exception:
+        db_question = None
+
+    if not question_text:
+        # Check in-memory question bank by question_id
+        for topic_questions in SimilarQuestionService.QUESTION_BANK.values():
+            for q_item in topic_questions:
+                if q_item.get("question_id") == str(request.question_id):
+                    question_text = q_item.get("question")
+                    break
+            if question_text:
+                break
+
+    # If question text still not resolved, inspect if first line of student solution is an equation
+    if not question_text and request.student_solution:
+        lines = [line.strip() for line in request.student_solution.split("\n") if line.strip()]
+        if lines and "=" in lines[0]:
+            question_text = lines[0]
+
+    # Clean question text (strip 'Solve for x: ', etc.)
+    if question_text:
+        question_text = MathSolver.clean_math_text(question_text)
+    else:
+        question_text = "x^2 + 5x + 6 = 0"
+
+    diag = MathSolver.check_student_working(question_text, request.student_solution)
+    # Ensure backward compatibility field for legacy callers
+    diag["corrected_solution_step"] = diag.get("corrected_step")
+    is_correct = diag.get("is_correct", False)
     
     # 2. Learner Profiling Stub (Component 2)
     profile = LearnerProfilingStub.update_learner_state(
@@ -98,7 +131,7 @@ def submit_attempt(request: AttemptSubmitRequest, db: Session = Depends(get_db))
                 failed_step_index=diag.get("failed_step_index"),
                 error_category=diag.get("error_category", "Unclassified"),
                 explanation_text=diag.get("explanation_text", ""),
-                corrected_step=diag.get("corrected_solution_step")
+                corrected_step=diag.get("corrected_solution_step") or diag.get("corrected_step")
             )
             db.add(err_diag)
             

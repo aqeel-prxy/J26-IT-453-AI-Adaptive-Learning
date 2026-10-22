@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
@@ -32,7 +33,8 @@ Future<PickedImageData?> pickImageFromGallery() async {
 Future<PickedImageData?> takePhotoFromCamera(BuildContext context) async {
   return showDialog<PickedImageData?>(
     context: context,
-    barrierDismissible: true,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.65),
     builder: (ctx) => const CameraCaptureModal(),
   );
 }
@@ -75,26 +77,39 @@ Future<PickedImageData?> _pickFile({required bool useCamera}) async {
   return completer.future;
 }
 
-/// In-browser Live Camera Viewfinder & Frame Capture Modal
-class CameraCaptureModal extends StatefulWidget {
-  const CameraCaptureModal({super.key});
+/// In-browser Live Camera Viewfinder
+/// Can be embedded inline directly inside a page/card or within a modal dialog.
+class CameraViewfinder extends StatefulWidget {
+  final ValueChanged<PickedImageData> onImageCaptured;
+  final VoidCallback onCancel;
+  final double height;
+  final bool isInline;
+
+  const CameraViewfinder({
+    super.key,
+    required this.onImageCaptured,
+    required this.onCancel,
+    this.height = 320,
+    this.isInline = false,
+  });
 
   @override
-  State<CameraCaptureModal> createState() => _CameraCaptureModalState();
+  State<CameraViewfinder> createState() => _CameraViewfinderState();
 }
 
-class _CameraCaptureModalState extends State<CameraCaptureModal> {
+class _CameraViewfinderState extends State<CameraViewfinder> {
   html.VideoElement? _videoElement;
   html.MediaStream? _mediaStream;
-  late final String _viewType;
+  String? _viewType;
   bool _isLoading = true;
   String? _errorMessage;
   bool _isCapturing = false;
+  bool _isDisposed = false;
+  static int _instanceCounter = 0;
 
   @override
   void initState() {
     super.initState();
-    _viewType = 'camera-view-${DateTime.now().microsecondsSinceEpoch}';
     _startCamera();
   }
 
@@ -107,10 +122,10 @@ class _CameraCaptureModalState extends State<CameraCaptureModal> {
     try {
       final mediaDevices = html.window.navigator.mediaDevices;
       if (mediaDevices == null) {
-        if (mounted) {
+        if (mounted && !_isDisposed) {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'Camera access is not supported in this browser.';
+            _errorMessage = 'Camera hardware access is not supported in this browser.';
           });
         }
         return;
@@ -123,8 +138,8 @@ class _CameraCaptureModalState extends State<CameraCaptureModal> {
         stream = await mediaDevices.getUserMedia({
           'video': {
             'facingMode': {'ideal': 'environment'},
-            'width': {'ideal': 1280},
-            'height': {'ideal': 720},
+            'width': {'ideal': 1920},
+            'height': {'ideal': 1080},
           },
           'audio': false,
         });
@@ -136,38 +151,58 @@ class _CameraCaptureModalState extends State<CameraCaptureModal> {
         });
       }
 
+      // Check if disposed while waiting for user to click "Allow"
+      if (_isDisposed) {
+        for (final track in stream.getTracks()) {
+          try {
+            track.stop();
+          } catch (_) {}
+        }
+        return;
+      }
+
       _mediaStream = stream;
+
+      final viewId = 'math-camera-view-${DateTime.now().millisecondsSinceEpoch}-${_instanceCounter++}-${math.Random().nextInt(9999)}';
+      _viewType = viewId;
 
       _videoElement = html.VideoElement()
         ..autoplay = true
         ..muted = true
         ..setAttribute('playsinline', 'true')
+        ..setAttribute('autoplay', 'true')
+        ..setAttribute('muted', 'true')
         ..style.width = '100%'
         ..style.height = '100%'
-        ..style.objectFit = 'cover';
+        ..style.objectFit = 'cover'
+        ..style.backgroundColor = '#000000'
+        ..style.border = 'none';
 
       _videoElement!.srcObject = stream;
-      try {
-        await _videoElement!.play();
-      } catch (_) {}
+
+      // Play video reliably on metadata
+      _videoElement!.onLoadedMetadata.listen((_) {
+        _videoElement?.play().catchError((_) {});
+      });
+      _videoElement!.play().catchError((_) {});
 
       // Register platform view for web rendering
       ui_web.platformViewRegistry.registerViewFactory(
-        _viewType,
-        (int viewId) => _videoElement!,
+        viewId,
+        (int id) => _videoElement!,
       );
 
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _isLoading = false;
           _errorMessage =
-              'Could not open device camera. Please make sure your camera is connected and browser permission is allowed.';
+              'Could not access camera preview. Please check camera connection and allow camera access in browser permissions.';
         });
       }
     }
@@ -183,7 +218,10 @@ class _CameraCaptureModalState extends State<CameraCaptureModal> {
       _mediaStream = null;
     }
     if (_videoElement != null) {
-      _videoElement!.srcObject = null;
+      try {
+        _videoElement!.pause();
+        _videoElement!.srcObject = null;
+      } catch (_) {}
       _videoElement = null;
     }
   }
@@ -194,12 +232,10 @@ class _CameraCaptureModalState extends State<CameraCaptureModal> {
     setState(() => _isCapturing = true);
 
     try {
-      final vWidth = _videoElement!.videoWidth;
-      final vHeight = _videoElement!.videoHeight;
-      final width = vWidth > 0 ? vWidth : 1280;
-      final height = vHeight > 0 ? vHeight : 720;
+      final vWidth = _videoElement!.videoWidth > 0 ? _videoElement!.videoWidth : 1280;
+      final vHeight = _videoElement!.videoHeight > 0 ? _videoElement!.videoHeight : 720;
 
-      final canvas = html.CanvasElement(width: width, height: height);
+      final canvas = html.CanvasElement(width: vWidth, height: vHeight);
       canvas.context2D.drawImage(_videoElement!, 0, 0);
 
       final dataUrl = canvas.toDataUrl('image/jpeg', 0.92);
@@ -209,15 +245,13 @@ class _CameraCaptureModalState extends State<CameraCaptureModal> {
 
       _stopCamera();
 
-      if (mounted) {
-        Navigator.of(context).pop(
-          PickedImageData(
-            fileName: 'camera_question_${DateTime.now().millisecondsSinceEpoch}.jpg',
-            bytes: bytes,
-            dataUrl: dataUrl,
-          ),
-        );
-      }
+      final pickedImage = PickedImageData(
+        fileName: 'question_camera_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        bytes: bytes,
+        dataUrl: dataUrl,
+      );
+
+      widget.onImageCaptured(pickedImage);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -231,264 +265,420 @@ class _CameraCaptureModalState extends State<CameraCaptureModal> {
   Future<void> _chooseFileInstead() async {
     _stopCamera();
     final picked = await pickImageFromGallery();
-    if (mounted) {
-      Navigator.of(context).pop(picked);
+    if (picked != null) {
+      widget.onImageCaptured(picked);
+    } else {
+      widget.onCancel();
     }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _stopCamera();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final dialogWidth = screenSize.width > 600 ? 560.0 : screenSize.width * 0.92;
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Container(
-        width: dialogWidth,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Modal Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 14, 12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2FF),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF4338CA), size: 22),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF334155), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Live Header Bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            color: const Color(0xFF1E293B),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDC2626).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFEF4444), width: 1),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Capture Question Camera',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          'Point your camera at the math problem and snap',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: AppTheme.textMuted),
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: 'Cancel',
-                  ),
-                ],
-              ),
-            ),
-
-            const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
-
-            // Viewfinder Viewport
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  height: 320,
-                  color: Colors.black,
-                  child: Stack(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Video Stream View
-                      if (!_isLoading && _errorMessage == null)
-                        Positioned.fill(
-                          child: HtmlElementView(viewType: _viewType),
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
                         ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'LIVE CAMERA',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFFCA5A5),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Position equation in viewfinder',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                  onPressed: () {
+                    _stopCamera();
+                    widget.onCancel();
+                  },
+                  tooltip: 'Close Camera',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
 
-                      // Loading State
-                      if (_isLoading)
-                        Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const CircularProgressIndicator(color: Colors.white),
-                              const SizedBox(height: 14),
-                              Text(
-                                'Starting device camera...',
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
+          // Viewfinder Viewport
+          SizedBox(
+            height: widget.height,
+            child: Stack(
+              children: [
+                // 1. Live Video Stream View
+                if (!_isLoading && _errorMessage == null && _viewType != null)
+                  Positioned.fill(
+                    child: HtmlElementView(
+                      key: ValueKey(_viewType),
+                      viewType: _viewType!,
+                    ),
+                  ),
+
+                // 2. Loading State
+                if (_isLoading)
+                  Positioned.fill(
+                    child: Container(
+                      color: const Color(0xFF0F172A),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(color: Color(0xFF818CF8), strokeWidth: 2.8),
+                            const SizedBox(height: 14),
+                            Text(
+                              'Opening camera preview...',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFFF1F5F9),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Please ensure browser camera permission is allowed',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFF94A3B8),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
+                  ),
 
-                      // Error State
-                      if (_errorMessage != null)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                // 3. Error State
+                if (_errorMessage != null)
+                  Positioned.fill(
+                    child: Container(
+                      color: const Color(0xFF0F172A),
+                      padding: const EdgeInsets.all(20),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.videocam_off_rounded, color: Color(0xFFF59E0B), size: 42),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Camera Preview Unavailable',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFFCBD5E1),
+                                fontSize: 11.5,
+                                height: 1.35,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.videocam_off_outlined, color: Color(0xFFF59E0B), size: 44),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _errorMessage!,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white,
-                                    fontSize: 12.5,
-                                    height: 1.4,
+                                ElevatedButton.icon(
+                                  onPressed: _startCamera,
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Try Again'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF4338CA),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                ElevatedButton.icon(
+                                const SizedBox(width: 8),
+                                OutlinedButton.icon(
                                   onPressed: _chooseFileInstead,
-                                  icon: const Icon(Icons.upload_file, size: 18),
-                                  label: const Text('Choose Photo from Files'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.primaryBlue,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  icon: const Icon(Icons.upload_file, size: 16),
+                                  label: const Text('Upload File Instead'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFFCBD5E1),
+                                    side: const BorderSide(color: Color(0xFF475569)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
+                          ],
                         ),
+                      ),
+                    ),
+                  ),
 
-                      // Viewfinder Overlay Reticle
-                      if (!_isLoading && _errorMessage == null) ...[
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: Container(
-                              margin: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Stack(
-                                children: [
-                                  // Top corner brackets
-                                  Align(
-                                    alignment: Alignment.topLeft,
-                                    child: Container(width: 20, height: 20, decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFF60A5FA), width: 3.5), left: BorderSide(color: Color(0xFF60A5FA), width: 3.5)))),
+                // 4. Mathematical Framing Reticle Overlay
+                if (!_isLoading && _errorMessage == null)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        margin: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Stack(
+                          children: [
+                            // Top-Left corner
+                            Align(
+                              alignment: Alignment.topLeft,
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: const BoxDecoration(
+                                  border: Border(
+                                    top: BorderSide(color: Color(0xFF60A5FA), width: 3.5),
+                                    left: BorderSide(color: Color(0xFF60A5FA), width: 3.5),
                                   ),
-                                  Align(
-                                    alignment: Alignment.topRight,
-                                    child: Container(width: 20, height: 20, decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFF60A5FA), width: 3.5), right: BorderSide(color: Color(0xFF60A5FA), width: 3.5)))),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.bottomLeft,
-                                    child: Container(width: 20, height: 20, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF60A5FA), width: 3.5), left: BorderSide(color: Color(0xFF60A5FA), width: 3.5)))),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.bottomRight,
-                                    child: Container(width: 20, height: 20, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF60A5FA), width: 3.5), right: BorderSide(color: Color(0xFF60A5FA), width: 3.5)))),
-                                  ),
-                                  Center(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.5),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        'Place question inside frame',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
+                            // Top-Right corner
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: const BoxDecoration(
+                                  border: Border(
+                                    top: BorderSide(color: Color(0xFF60A5FA), width: 3.5),
+                                    right: BorderSide(color: Color(0xFF60A5FA), width: 3.5),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Bottom-Left corner
+                            Align(
+                              alignment: Alignment.bottomLeft,
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: const BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(color: Color(0xFF60A5FA), width: 3.5),
+                                    left: BorderSide(color: Color(0xFF60A5FA), width: 3.5),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Bottom-Right corner
+                            Align(
+                              alignment: Alignment.bottomRight,
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: const BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(color: Color(0xFF60A5FA), width: 3.5),
+                                    right: BorderSide(color: Color(0xFF60A5FA), width: 3.5),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Center Guidance Pill
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                ),
+                                child: Text(
+                                  'Focus mathematical question inside frame',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ],
+                      ),
+                    ),
+                  ),
+
+                // 5. Capturing Overlay
+                if (_isCapturing)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Snapping high-res photo frame...',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Bottom Control Toolbar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            color: const Color(0xFF1E293B),
+            child: Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _chooseFileInstead,
+                  icon: const Icon(Icons.file_upload_outlined, size: 16),
+                  label: const Text('Upload File'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFCBD5E1),
+                    side: const BorderSide(color: Color(0xFF475569)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: (_isLoading || _errorMessage != null || _isCapturing)
+                        ? null
+                        : _captureFrame,
+                    icon: _isCapturing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.camera_alt_rounded, size: 18),
+                    label: Text(
+                      _isCapturing ? 'Reading Image...' : 'Snap Question Photo',
+                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8), size: 20),
+                  onPressed: _startCamera,
+                  tooltip: 'Restart camera stream',
+                ),
+              ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-            // Controls Toolbar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-              child: Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _chooseFileInstead,
-                    icon: const Icon(Icons.file_upload_outlined, size: 16),
-                    label: const Text('Upload File'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: (_isLoading || _errorMessage != null || _isCapturing)
-                          ? null
-                          : _captureFrame,
-                      icon: _isCapturing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.camera, size: 20),
-                      label: Text(
-                        _isCapturing ? 'Capturing...' : 'Capture Question',
-                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4338CA),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+/// Modal Dialog wrapper around CameraViewfinder
+class CameraCaptureModal extends StatelessWidget {
+  const CameraCaptureModal({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final dialogWidth = screenSize.width > 600 ? 560.0 : screenSize.width * 0.94;
+    final viewfinderHeight = screenSize.height < 650 ? 230.0 : 280.0;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: SizedBox(
+        width: dialogWidth,
+        child: CameraViewfinder(
+          isInline: false,
+          height: viewfinderHeight,
+          onImageCaptured: (image) {
+            Navigator.of(context).pop(image);
+          },
+          onCancel: () {
+            Navigator.of(context).pop(null);
+          },
         ),
       ),
     );

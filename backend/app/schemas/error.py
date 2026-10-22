@@ -40,6 +40,9 @@ class CheckWorkingResponse(BaseModel):
     is_ambiguous: bool = False
     uncertainty_notice: Optional[str] = None
     correct_steps: List[SolutionStep] = []
+    mathematical_rationale: Optional[str] = None
+    guided_hint: Optional[str] = None
+    recommended_action: Optional[str] = None
 
 
 class SimilarQuestionResponse(BaseModel):

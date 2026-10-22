@@ -196,3 +196,124 @@ def test_similar_question_retry_and_persistence():
     assert res_attempt.status_code == 200
     attempt_data = res_attempt.json()
     assert attempt_data["attempt_id"] is not None
+
+
+# 10. Consecutive transformation verification: Expansion error
+def test_consecutive_verification_expansion_error():
+    res = client.post(
+        "/api/v1/error/check-working",
+        json={
+            "question": "2(x + 3) = 14",
+            "solution_steps": "2x + 3 = 14\n2x = 11\nx = 11/2"
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_correct"] is False
+    assert data["failed_step_index"] == 1
+    assert data["error_category"] == "Expansion Error"
+    assert "Distributive" in data["explanation_text"] or "parentheses" in data["explanation_text"]
+    assert data["mathematical_rationale"] is not None
+    assert data["guided_hint"] is not None
+
+
+# 11. Consecutive transformation verification: Transposition sign error
+def test_consecutive_verification_transposition_sign_error():
+    res = client.post(
+        "/api/v1/error/check-working",
+        json={
+            "question": "2(x + 3) = 14",
+            "solution_steps": "2x + 6 = 14\n2x = 20\nx = 10"
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_correct"] is False
+    assert data["failed_step_index"] == 2
+    assert data["error_category"] == "Sign Error"
+    assert "transposing" in data["explanation_text"].lower()
+
+
+# 12. Consecutive transformation verification: Extraneous solution introduced
+def test_consecutive_verification_extraneous_root():
+    res = client.post(
+        "/api/v1/error/check-working",
+        json={
+            "question": "2x = 6",
+            "solution_steps": "(x - 3)(x - 5) = 0\nx = 3 or x = 5"
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_correct"] is False
+    assert data["failed_step_index"] == 1
+    assert data["error_category"] == "Invalid Algebraic Transformation"
+    assert "extraneous" in data["explanation_text"].lower()
+
+
+# 13. Consecutive transformation verification: Lost solution (dividing by variable x)
+def test_consecutive_verification_lost_solution():
+    res = client.post(
+        "/api/v1/error/check-working",
+        json={
+            "question": "x² - 4x = 0",
+            "solution_steps": "x - 4 = 0\nx = 4"
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_correct"] is False
+    assert data["failed_step_index"] == 1
+    assert data["error_category"] == "Procedural Error (Lost Solution)"
+    assert "lost" in data["explanation_text"].lower() or "eliminates" in data["explanation_text"].lower()
+
+
+# 14. Consecutive transformation verification: BODMAS precedence error
+def test_consecutive_verification_arithmetic_bodmas_error():
+    res = client.post(
+        "/api/v1/error/check-working",
+        json={
+            "question": "6 ÷ 2(1 + 2) =",
+            "solution_steps": "6 ÷ 6\n1"
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_correct"] is False
+    assert data["failed_step_index"] == 1
+    assert data["error_category"] == "Procedural Error (BODMAS Precedence)"
+
+
+# 15. Safe parsing and ambiguous syntax handling
+def test_consecutive_verification_ambiguous_syntax_error():
+    res = client.post(
+        "/api/v1/error/check-working",
+        json={
+            "question": "2x + 4 = 10",
+            "solution_steps": "2x +++ 4 === ???\nx = 3"
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_correct"] is False
+    assert data["failed_step_index"] == 1
+    assert data["is_ambiguous"] is True
+    assert data["error_category"] == "Ambiguous / Syntax Error"
+
+
+# 16. Shared mathematics submission endpoint error diagnosis persistence
+def test_shared_submission_endpoint_real_diagnosis_persistence():
+    payload = {
+        "student_id": "a1111111-1111-1111-1111-111111111111",
+        "question_id": "c4000000-0000-0000-0000-000000000001",
+        "student_solution": "x² + 7x + 12 = 0\n(x + 3)(x + 4) = 0\nx = 3 or x = 4",
+        "response_time_ms": 11000
+    }
+    res = client.post("/api/v1/mathematics/attempts/submit", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_correct"] is False
+    assert data["error_diagnosis"]["failed_step_index"] == 3
+    assert data["error_diagnosis"]["error_category"] == "Sign Error"
+    assert "x = -3" in data["error_diagnosis"]["explanation_text"]
+
