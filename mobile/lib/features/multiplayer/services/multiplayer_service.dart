@@ -162,6 +162,8 @@ class MultiplayerService {
     required int selectedOptionIndex,
     required int responseTimeMs,
     String? textAnswer,
+    int optionSwitches = 0,
+    double idleSeconds = 0.0,
   }) async {
     final payload = {
       'pin': pin,
@@ -169,6 +171,8 @@ class MultiplayerService {
       'question_index': questionIndex,
       'selected_option_index': selectedOptionIndex,
       'response_time_ms': responseTimeMs,
+      'option_switches': optionSwitches,
+      'idle_seconds': idleSeconds,
       if (textAnswer != null) 'text_answer': textAnswer,
     };
 
@@ -228,6 +232,23 @@ class MultiplayerService {
         } else {
           local.status = 'FINISHED';
         }
+        return local;
+      }
+      throw Exception('Room not found.');
+    }
+  }
+
+  Future<MultiplayerRoom> endGame(String pin) async {
+    try {
+      final endpoint = "${ApiEndpoints.multiplayerEndGame}/$pin";
+      final res = await apiClient.post(endpoint, {});
+      final room = MultiplayerRoom.fromJson(res);
+      _localRooms[pin] = room;
+      return room;
+    } catch (_) {
+      final local = _localRooms[pin];
+      if (local != null) {
+        local.status = 'FINISHED';
         return local;
       }
       throw Exception('Room not found.');

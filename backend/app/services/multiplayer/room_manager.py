@@ -348,7 +348,10 @@ class RoomManager:
             "is_host": True,
             "is_ready": True,
             "last_response_time_ms": None,
-            "predicted_state": "FOCUSED"
+            "predicted_state": "FOCUSED",
+            "answered_count": 0,
+            "progress_percentage": 0,
+            "is_completed": False
         }
 
         room_data = {
@@ -393,8 +396,21 @@ class RoomManager:
     @classmethod
     def get_room(cls, pin: str) -> Optional[Dict[str, Any]]:
         if pin == "1000":
-            return cls._ensure_default_room_1000()
-        return cls._rooms.get(pin)
+            cls._ensure_default_room_1000()
+        room = cls._rooms.get(pin)
+        if not room:
+            return None
+
+        # Dynamically compute completion progress for each player based on recorded answers
+        total_q = max(1, len(room.get("questions", [])))
+        for p in room.get("players", []):
+            pid = p["player_id"]
+            ans_count = sum(1 for q_idx, p_map in room.get("answers", {}).items() if pid in p_map)
+            p["answered_count"] = ans_count
+            p["progress_percentage"] = int((ans_count / total_q) * 100)
+            p["is_completed"] = (ans_count >= total_q)
+
+        return room
 
     @classmethod
     def join_room(
@@ -431,7 +447,10 @@ class RoomManager:
             "is_host": False,
             "is_ready": True,
             "last_response_time_ms": None,
-            "predicted_state": "FOCUSED"
+            "predicted_state": "FOCUSED",
+            "answered_count": 0,
+            "progress_percentage": 0,
+            "is_completed": False
         }
         room["players"].append(new_player)
         return room
@@ -463,7 +482,10 @@ class RoomManager:
             "is_ready": True,
             "last_response_time_ms": None,
             "predicted_state": "FOCUSED",
-            "is_bot": True
+            "is_bot": True,
+            "answered_count": 0,
+            "progress_percentage": 0,
+            "is_completed": False
         }
         room["players"].append(bot_player)
         return bot_player
@@ -486,7 +508,9 @@ class RoomManager:
         question_index: int,
         selected_option_index: Optional[int] = 0,
         response_time_ms: int = 5000,
-        text_answer: Optional[str] = None
+        text_answer: Optional[str] = None,
+        option_switches: int = 0,
+        idle_seconds: float = 0.0
     ) -> Dict[str, Any]:
         room = cls._rooms.get(pin)
         if not room:
@@ -510,6 +534,16 @@ class RoomManager:
         if is_correct:
             earned_score = 100 + int(50 * time_fraction)
 
+        # Re-evaluating previous answer if student revisits and resubmits
+        prev_ans = room.get("answers", {}).get(question_index, {}).get(player_id)
+        if prev_ans:
+            for p in room["players"]:
+                if p["player_id"] == player_id:
+                    p["score"] = max(0, p["score"] - prev_ans.get("earned_score", 0))
+                    if prev_ans.get("is_correct", False):
+                        p["correct_count"] = max(0, p["correct_count"] - 1)
+                    break
+
         # Update player state
         target_player = None
         for p in room["players"]:
@@ -524,16 +558,16 @@ class RoomManager:
                     from app.services.engagement.engagement_model import EngagementPredictor
                     predictor = EngagementPredictor.get_instance()
                     time_sec = response_time_ms / 1000.0
-                    rapid = 1 if time_sec < 3.5 else 0
+                    rapid = 1 if time_sec < 3.0 else 0
                     correct_int = 1 if is_correct else 0
-                    switches = 2 if not is_correct and time_sec > 15.0 else (0 if is_correct else 1)
-                    idle = max(0.0, time_sec - 3.5) if time_sec > 3.5 else 0.0
+                    actual_switches = int(option_switches)
+                    actual_idle = float(idle_seconds) if idle_seconds > 0 else (max(0.0, time_sec - 3.5) if time_sec > 3.5 else 0.0)
                     ml_eval = predictor.predict(
                         time_taken_sec=time_sec,
-                        option_switches=switches,
+                        option_switches=actual_switches,
                         is_rapid_guess=rapid,
                         is_correct=correct_int,
-                        idle_seconds=idle,
+                        idle_seconds=actual_idle,
                         consecutive_errors=0 if is_correct else 2
                     )
                     p["predicted_state"] = ml_eval["predicted_state"]
@@ -549,10 +583,19 @@ class RoomManager:
 
         room["answers"][question_index][player_id] = {
             "selected_option": selected_option_index,
+            "text_answer": text_answer,
             "is_correct": is_correct,
             "earned_score": earned_score,
             "response_time_ms": response_time_ms
         }
+
+        # Update real-time completion progress for this player
+        total_q = max(1, len(room["questions"]))
+        if target_player:
+            ans_count = sum(1 for q_idx, p_map in room["answers"].items() if player_id in p_map)
+            target_player["answered_count"] = ans_count
+            target_player["progress_percentage"] = int((ans_count / total_q) * 100)
+            target_player["is_completed"] = (ans_count >= total_q)
 
         # Simulate answers for any bots in this room for this question
         for p in room["players"]:
@@ -573,6 +616,10 @@ class RoomManager:
                     "earned_score": bot_points,
                     "response_time_ms": bot_time_ms
                 }
+                bot_ans_count = sum(1 for q_idx, p_map in room["answers"].items() if p["player_id"] in p_map)
+                p["answered_count"] = bot_ans_count
+                p["progress_percentage"] = int((bot_ans_count / total_q) * 100)
+                p["is_completed"] = (bot_ans_count >= total_q)
 
         # In a TEACHER_CLASSROOM, leaderboard sent to students should exclude the teacher host
         is_teacher_room = (room.get("room_type") == "TEACHER_CLASSROOM")
@@ -595,9 +642,19 @@ class RoomManager:
         }
 
     @classmethod
+    def end_game(cls, pin: str) -> Dict[str, Any]:
+        room = cls._rooms.get(pin)
+        if not room:
+            raise ValueError("Room not found.")
+
+        room["status"] = "FINISHED"
+        return room
+
+    @classmethod
     def next_question(cls, pin: str) -> Dict[str, Any]:
         room = cls._rooms.get(pin)
         if not room:
+            raise ValueError("Room not found.")
             raise ValueError("Room not found.")
 
         if room["current_question_index"] + 1 < len(room["questions"]):

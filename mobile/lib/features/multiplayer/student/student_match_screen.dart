@@ -27,13 +27,17 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
 
   Timer? _countdownTimer;
   late int _secondsLeft;
-  late int _totalSeconds;
+  late int _totalExamSeconds;
 
   int? _selectedOption;
-  bool _hasAnswered = false;
-  AnswerOutcome? _lastOutcome;
   final Stopwatch _questionStopwatch = Stopwatch();
   late final TextEditingController _directAnswerController;
+
+  // Question-by-question tracking for option switches & ML telemetry
+  final Map<int, int> _userSelectedOptions = {};
+  final Map<int, String> _userTextAnswers = {};
+  final Map<int, int> _questionSwitches = {};
+  final Map<int, int> _questionElapsedMs = {};
 
   @override
   void initState() {
@@ -41,10 +45,12 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
     _directAnswerController = TextEditingController();
     _room = widget.room;
     _currentQuestionIndex = _room.currentQuestionIndex;
-    _totalSeconds = _room.timePerQuestion;
-    _secondsLeft = _totalSeconds;
 
-    _startQuestion();
+    // Total exam timer is calculated across all questions in the test
+    _totalExamSeconds = _room.timePerQuestion * _room.questions.length;
+    _secondsLeft = _totalExamSeconds;
+
+    _startExamTimer();
   }
 
   @override
@@ -55,12 +61,7 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
     super.dispose();
   }
 
-  void _startQuestion() {
-    _selectedOption = null;
-    _hasAnswered = false;
-    _lastOutcome = null;
-    _secondsLeft = _totalSeconds;
-    _directAnswerController.clear();
+  void _startExamTimer() {
     _questionStopwatch.reset();
     _questionStopwatch.start();
 
@@ -70,108 +71,123 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
         setState(() => _secondsLeft -= 1);
       } else {
         timer.cancel();
-        if (!_hasAnswered) {
-          final curr = _currentQuestion;
-          if (curr != null && curr.options.isEmpty) {
-            _submitDirectAnswer();
-          } else {
-            _submitAnswer(-1); // timed out
-          }
-        }
+        // Total exam duration expired: submit and finish exam
+        _finishExam();
       }
     });
   }
 
-  Future<void> _submitAnswer(int optionIndex) async {
-    if (_hasAnswered) return;
-    _countdownTimer?.cancel();
-    _questionStopwatch.stop();
+  void _selectOption(int optionIndex) {
+    final prev = _userSelectedOptions[_currentQuestionIndex];
+    if (prev != null && prev != optionIndex) {
+      // User switched their option choice: record switch for ML hesitation detection
+      _questionSwitches[_currentQuestionIndex] = (_questionSwitches[_currentQuestionIndex] ?? 0) + 1;
+    }
 
-    final responseTime = _questionStopwatch.elapsedMilliseconds;
     setState(() {
-      _hasAnswered = true;
+      _userSelectedOptions[_currentQuestionIndex] = optionIndex;
       _selectedOption = optionIndex;
     });
+  }
 
-    final outcome = await _service.submitAnswer(
-      pin: _room.pin,
-      playerId: widget.currentPlayerId,
-      questionIndex: _currentQuestionIndex,
-      selectedOptionIndex: optionIndex,
-      responseTimeMs: responseTime,
-    );
+  void _saveCurrentQuestionTelemetry() {
+    final current = _questionElapsedMs[_currentQuestionIndex] ?? 0;
+    _questionElapsedMs[_currentQuestionIndex] = current + _questionStopwatch.elapsedMilliseconds;
+    _questionStopwatch.reset();
+    _questionStopwatch.start();
+    if (_directAnswerController.text.trim().isNotEmpty) {
+      _userTextAnswers[_currentQuestionIndex] = _directAnswerController.text.trim();
+    }
+  }
 
-    if (mounted) {
+  Future<void> _syncAnswerIfPresent(int qIndex) async {
+    final selected = _userSelectedOptions[qIndex];
+    final text = _userTextAnswers[qIndex];
+    if (selected == null && (text == null || text.isEmpty)) {
+      return; // Question unanswered / skipped: do not submit fake answer
+    }
+
+    final responseTime = _questionElapsedMs[qIndex] ?? 3000;
+    final switches = _questionSwitches[qIndex] ?? 0;
+    final timeSec = responseTime / 1000.0;
+    final idle = (timeSec > 3.5) ? (timeSec - 3.5) : 0.0;
+
+    try {
+      final outcome = await _service.submitAnswer(
+        pin: _room.pin,
+        playerId: widget.currentPlayerId,
+        questionIndex: qIndex,
+        selectedOptionIndex: selected ?? -1,
+        responseTimeMs: responseTime > 0 ? responseTime : 3000,
+        textAnswer: text,
+        optionSwitches: switches,
+        idleSeconds: idle,
+      );
+
+      if (mounted) {
+        setState(() {
+          _room.players = outcome.leaderboard;
+        });
+      }
+    } catch (_) {
+      // Silent error handling for background telemetry sync
+    }
+  }
+
+  void _navigatePrevious() {
+    if (_currentQuestionIndex > 0) {
+      _saveCurrentQuestionTelemetry();
+      _syncAnswerIfPresent(_currentQuestionIndex);
       setState(() {
-        _lastOutcome = outcome;
-        _room.players = outcome.leaderboard;
-      });
-
-      // Auto-advance after 2.5 seconds review
-      Future.delayed(const Duration(milliseconds: 2500), () {
-        if (mounted) _advanceNext();
+        _currentQuestionIndex -= 1;
+        _loadQuestionState();
       });
     }
   }
 
-  Future<void> _submitDirectAnswer() async {
-    if (_hasAnswered) return;
+  Future<void> _navigateNextOrSubmit() async {
+    _saveCurrentQuestionTelemetry();
+    _syncAnswerIfPresent(_currentQuestionIndex);
+
+    if (_currentQuestionIndex + 1 < _room.questions.length) {
+      setState(() {
+        _currentQuestionIndex += 1;
+        _loadQuestionState();
+      });
+    } else {
+      await _finishExam();
+    }
+  }
+
+  Future<void> _finishExam() async {
     _countdownTimer?.cancel();
     _questionStopwatch.stop();
 
-    final responseTime = _questionStopwatch.elapsedMilliseconds;
-    final text = _directAnswerController.text.trim();
+    _saveCurrentQuestionTelemetry();
+    await _syncAnswerIfPresent(_currentQuestionIndex);
 
-    setState(() {
-      _hasAnswered = true;
-      _selectedOption = 0;
-    });
-
-    final outcome = await _service.submitAnswer(
-      pin: _room.pin,
-      playerId: widget.currentPlayerId,
-      questionIndex: _currentQuestionIndex,
-      selectedOptionIndex: 0,
-      responseTimeMs: responseTime,
-      textAnswer: text.isNotEmpty ? text : '(No answer provided)',
-    );
+    // Sync any other answered questions that haven't synced yet
+    for (int i = 0; i < _room.questions.length; i++) {
+      if (_userSelectedOptions.containsKey(i) || _userTextAnswers.containsKey(i)) {
+        await _syncAnswerIfPresent(i);
+      }
+    }
 
     if (mounted) {
-      setState(() {
-        _lastOutcome = outcome;
-        _room.players = outcome.leaderboard;
-      });
-
-      // Auto-advance after 2.5 seconds review
-      Future.delayed(const Duration(milliseconds: 2500), () {
-        if (mounted) _advanceNext();
-      });
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => StudentResultsScreen(
+            room: _room,
+            currentPlayerId: widget.currentPlayerId,
+          ),
+        ),
+      );
     }
   }
 
-  Future<void> _advanceNext() async {
-    if (_currentQuestionIndex + 1 < _room.questions.length) {
-      final updated = await _service.nextQuestion(_room.pin);
-      if (mounted) {
-        setState(() {
-          _room = updated;
-          _currentQuestionIndex = updated.currentQuestionIndex;
-        });
-        _startQuestion();
-      }
-    } else {
-      // Round Complete -> Step 4 Results
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => StudentResultsScreen(
-              room: _room,
-              currentPlayerId: widget.currentPlayerId,
-            ),
-          ),
-        );
-      }
-    }
+  void _loadQuestionState() {
+    _selectedOption = _userSelectedOptions[_currentQuestionIndex];
+    _directAnswerController.text = _userTextAnswers[_currentQuestionIndex] ?? '';
   }
 
   QuizQuestion? get _currentQuestion {
@@ -184,7 +200,10 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     final q = _currentQuestion;
-    final progressFraction = (_secondsLeft / _totalSeconds).clamp(0.0, 1.0);
+    final progressFraction = (_secondsLeft / _totalExamSeconds).clamp(0.0, 1.0);
+    final mins = (_secondsLeft ~/ 60).toString().padLeft(2, '0');
+    final secs = (_secondsLeft % 60).toString().padLeft(2, '0');
+    final timerText = '$mins:$secs';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -222,10 +241,10 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _secondsLeft <= 5 ? AppTheme.errorBg : AppTheme.primaryLight,
+              color: _secondsLeft <= 15 ? AppTheme.errorBg : AppTheme.primaryLight,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _secondsLeft <= 5 ? AppTheme.errorRed : AppTheme.primaryBlue,
+                color: _secondsLeft <= 15 ? AppTheme.errorRed : AppTheme.primaryBlue,
               ),
             ),
             child: Row(
@@ -233,15 +252,15 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                 Icon(
                   Icons.timer,
                   size: 16,
-                  color: _secondsLeft <= 5 ? AppTheme.errorRed : AppTheme.primaryBlue,
+                  color: _secondsLeft <= 15 ? AppTheme.errorRed : AppTheme.primaryBlue,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${_secondsLeft}s',
-                  style: GoogleFonts.plusJakartaSans(
+                  timerText,
+                  style: GoogleFonts.firaCode(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: _secondsLeft <= 5 ? AppTheme.errorRed : AppTheme.primaryBlue,
+                    color: _secondsLeft <= 15 ? AppTheme.errorRed : AppTheme.primaryBlue,
                   ),
                 ),
               ],
@@ -294,28 +313,49 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'SOLVE IN TIME',
+                                    'QUESTION ${_currentQuestionIndex + 1} OF ${_room.questions.length}',
                                     style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 10.5,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w800,
                                       color: AppTheme.textSecondary,
                                       letterSpacing: 0.8,
                                     ),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFEF3C7),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      '⚡ Speed Bonus Active',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFFB45309),
+                                  Row(
+                                    children: [
+                                      if ((_questionSwitches[_currentQuestionIndex] ?? 0) > 0)
+                                        Container(
+                                          margin: const EdgeInsets.only(right: 6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEDE9FE),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            '🔄 ${_questionSwitches[_currentQuestionIndex]} ${(_questionSwitches[_currentQuestionIndex] == 1) ? "Switch" : "Switches"}',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF6D28D9),
+                                            ),
+                                          ),
+                                        ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFEF3C7),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text(
+                                          '⚡ Speed Bonus Active',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFFB45309),
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -341,7 +381,6 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                             return _buildOptionButton(
                               optionIndex: index,
                               text: q.options[index],
-                              correctIndex: q.correctIndex,
                             );
                           }),
                         ] else ...[
@@ -380,7 +419,6 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                                 const SizedBox(height: 12),
                                 TextField(
                                   controller: _directAnswerController,
-                                  enabled: !_hasAnswered,
                                   maxLines: 2,
                                   style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
                                   decoration: InputDecoration(
@@ -403,70 +441,13 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                                     contentPadding: const EdgeInsets.all(14),
                                   ),
                                 ),
-                                const SizedBox(height: 14),
-                                ElevatedButton.icon(
-                                  onPressed: _hasAnswered ? null : _submitDirectAnswer,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.primaryBlue,
-                                    minimumSize: const Size(double.infinity, 48),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                  ),
-                                  icon: const Icon(Icons.send_rounded, size: 18, color: Colors.white),
-                                  label: Text(
-                                    _hasAnswered ? 'Submitted' : 'Submit Answer',
-                                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-
-                        // Instant Result Banner
-                        if (_hasAnswered && _lastOutcome != null) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: _lastOutcome!.isCorrect ? AppTheme.successBg : AppTheme.errorBg,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: _lastOutcome!.isCorrect ? AppTheme.successGreen : AppTheme.errorRed,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _lastOutcome!.isCorrect ? Icons.check_circle : Icons.cancel,
-                                  color: _lastOutcome!.isCorrect ? AppTheme.successGreen : AppTheme.errorRed,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        q.options.isNotEmpty
-                                            ? (_lastOutcome!.isCorrect
-                                                ? 'Correct! +${_lastOutcome!.earnedScore} pts'
-                                                : 'Incorrect (Correct: ${q.options[q.correctIndex.clamp(0, q.options.length - 1)]})')
-                                            : 'Answer Recorded! +${_lastOutcome!.earnedScore} pts',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w800,
-                                          color: _lastOutcome!.isCorrect ? AppTheme.successGreen : AppTheme.errorRed,
-                                        ),
-                                      ),
-                                      if (_lastOutcome!.explanation.isNotEmpty)
-                                        Text(
-                                          _lastOutcome!.explanation,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 11,
-                                            color: AppTheme.textSecondary,
-                                          ),
-                                        ),
-                                    ],
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Your answer will be recorded as you navigate through the exam.',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    color: AppTheme.textSecondary,
+                                    fontStyle: FontStyle.italic,
                                   ),
                                 ),
                               ],
@@ -477,12 +458,20 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                     ),
                   ),
                 ),
+
+                // Pinned Bottom Navigation Controls (Previous and Next / Finish)
+                _buildBottomNavigationControls(),
               ],
             ),
     );
   }
 
   Widget _buildRealtimeMiniLeaderboard() {
+    final studentPlayers = _room.players
+        .where((p) => !p.isHost && !p.name.toLowerCase().contains('(teacher)'))
+        .toList();
+    final players = studentPlayers.isNotEmpty ? studentPlayers : _room.players;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -512,10 +501,10 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
             height: 38,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: _room.players.length,
+              itemCount: players.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
-                final p = _room.players[index];
+                final p = players[index];
                 final isMe = p.playerId == widget.currentPlayerId;
                 final rank = index + 1;
 
@@ -566,45 +555,29 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
   Widget _buildOptionButton({
     required int optionIndex,
     required String text,
-    required int correctIndex,
   }) {
-    Color bgColor = Colors.white;
-    Color borderColor = AppTheme.borderLight;
-    Color textColor = AppTheme.textPrimary;
-    IconData? trailingIcon;
-
-    if (_hasAnswered) {
-      if (optionIndex == correctIndex) {
-        bgColor = AppTheme.successBg;
-        borderColor = AppTheme.successGreen;
-        textColor = const Color(0xFF166534);
-        trailingIcon = Icons.check_circle;
-      } else if (optionIndex == _selectedOption) {
-        bgColor = AppTheme.errorBg;
-        borderColor = AppTheme.errorRed;
-        textColor = AppTheme.errorRed;
-        trailingIcon = Icons.cancel;
-      }
-    }
-
+    final isSelected = (_selectedOption == optionIndex);
     final letter = String.fromCharCode(65 + optionIndex);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: _hasAnswered ? null : () => _submitAnswer(optionIndex),
+        onTap: () => _selectOption(optionIndex),
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: bgColor,
+            color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor, width: 1.5),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryBlue : AppTheme.borderLight,
+              width: isSelected ? 2.0 : 1.2,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 6,
+                color: isSelected ? AppTheme.primaryBlue.withOpacity(0.08) : Colors.black.withOpacity(0.02),
+                blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -615,7 +588,7 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryLight,
+                  color: isSelected ? AppTheme.primaryBlue : AppTheme.primaryLight,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -624,7 +597,7 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.primaryBlue,
+                      color: isSelected ? Colors.white : AppTheme.primaryBlue,
                     ),
                   ),
                 ),
@@ -635,19 +608,102 @@ class _StudentMatchScreenState extends State<StudentMatchScreen> with SingleTick
                   text,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                    color: isSelected ? AppTheme.primaryBlue : AppTheme.textPrimary,
                   ),
                 ),
               ),
-              if (trailingIcon != null)
-                Icon(
-                  trailingIcon,
-                  color: borderColor,
-                  size: 20,
+              if (isSelected)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppTheme.primaryBlue,
+                  size: 22,
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationControls() {
+    final isLastQuestion = (_currentQuestionIndex == _room.questions.length - 1);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // Previous Question Button
+            Expanded(
+              flex: 4,
+              child: OutlinedButton.icon(
+                onPressed: _currentQuestionIndex > 0 ? _navigatePrevious : null,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  side: BorderSide(
+                    color: _currentQuestionIndex > 0 ? AppTheme.primaryBlue : const Color(0xFFE2E8F0),
+                    width: 1.5,
+                  ),
+                  backgroundColor: _currentQuestionIndex > 0 ? const Color(0xFFF8FAFC) : Colors.transparent,
+                ),
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  size: 18,
+                  color: _currentQuestionIndex > 0 ? AppTheme.primaryBlue : const Color(0xFF94A3B8),
+                ),
+                label: Text(
+                  'Previous',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: _currentQuestionIndex > 0 ? AppTheme.primaryBlue : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Next / Finish Button
+            Expanded(
+              flex: 6,
+              child: ElevatedButton.icon(
+                onPressed: _navigateNextOrSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isLastQuestion ? const Color(0xFF10B981) : AppTheme.primaryBlue,
+                  minimumSize: const Size(0, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 2,
+                ),
+                icon: Icon(
+                  isLastQuestion ? Icons.check_circle_rounded : Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  isLastQuestion ? 'Submit & Finish' : 'Next Question',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

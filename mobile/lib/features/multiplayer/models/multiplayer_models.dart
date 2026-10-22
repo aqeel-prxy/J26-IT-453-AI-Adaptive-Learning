@@ -54,6 +54,9 @@ class RoomPlayer {
   final bool isReady;
   int? lastResponseTimeMs;
   String predictedState; // FOCUSED, FRUSTRATED, BORED, AT_RISK
+  int answeredCount;
+  int progressPercentage;
+  bool isCompleted;
 
   RoomPlayer({
     required this.playerId,
@@ -65,6 +68,9 @@ class RoomPlayer {
     this.isReady = true,
     this.lastResponseTimeMs,
     this.predictedState = 'FOCUSED',
+    this.answeredCount = 0,
+    this.progressPercentage = 0,
+    this.isCompleted = false,
   });
 
   factory RoomPlayer.fromJson(Map<String, dynamic> json) {
@@ -78,6 +84,9 @@ class RoomPlayer {
       isReady: json['is_ready'] as bool? ?? true,
       lastResponseTimeMs: (json['last_response_time_ms'] as num?)?.toInt(),
       predictedState: json['predicted_state'] as String? ?? 'FOCUSED',
+      answeredCount: (json['answered_count'] as num?)?.toInt() ?? 0,
+      progressPercentage: (json['progress_percentage'] as num?)?.toInt() ?? 0,
+      isCompleted: json['is_completed'] as bool? ?? false,
     );
   }
 
@@ -92,6 +101,9 @@ class RoomPlayer {
       'is_ready': isReady,
       'last_response_time_ms': lastResponseTimeMs,
       'predicted_state': predictedState,
+      'answered_count': answeredCount,
+      'progress_percentage': progressPercentage,
+      'is_completed': isCompleted,
     };
   }
 }

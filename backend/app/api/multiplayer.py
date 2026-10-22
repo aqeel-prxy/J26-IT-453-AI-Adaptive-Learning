@@ -179,6 +179,8 @@ async def submit_answer(payload: SubmitAnswerRequest):
             selected_option_index=payload.selected_option_index or 0,
             response_time_ms=payload.response_time_ms,
             text_answer=payload.text_answer,
+            option_switches=payload.option_switches or 0,
+            idle_seconds=payload.idle_seconds or 0.0,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -224,6 +226,36 @@ async def next_question(pin: str):
         qr_code_data=room["qr_code_data"],
         questions=[QuizQuestionSchema(**q) for q in room["questions"]],
         current_question=QuizQuestionSchema(**curr_q) if curr_q else None
+    )
+
+
+@router.post("/end-game/{pin}", response_model=RoomDetailsResponse)
+async def end_game(pin: str):
+    """Host concludes the exam session and finalizes results"""
+    try:
+        room = RoomManager.end_game(pin)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await RoomManager.broadcast(pin, {
+        "event": "GAME_FINISHED"
+    })
+
+    return RoomDetailsResponse(
+        pin=room["pin"],
+        room_type=room["room_type"],
+        status=room["status"],
+        topic=room["topic"],
+        grade_level=room["grade_level"],
+        question_count=room["question_count"],
+        current_question_index=room["current_question_index"],
+        time_per_question=room["time_per_question"],
+        ml_insights_enabled=room["ml_insights_enabled"],
+        players=room["players"],
+        max_players=room["max_players"],
+        qr_code_data=room["qr_code_data"],
+        questions=[QuizQuestionSchema(**q) for q in room["questions"]],
+        current_question=None
     )
 
 

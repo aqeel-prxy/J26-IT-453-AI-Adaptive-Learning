@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiEndpoints {
   // Base URL pointing to FastAPI server:
-  // - 10.0.2.2: Host loopback inside Android Emulator
-  // - 127.0.0.1: Windows / macOS / Linux / Web
-  // (If presenting on a physical Android phone over Wi-Fi, change host to your laptop's Wi-Fi IP)
+  // - 127.0.0.1: Physical phone via USB (with 'adb reverse tcp:8000 tcp:8000') & Desktop / Web
+  // - 10.0.2.2: Android Emulator
+  // - Wi-Fi IP (e.g. 192.168.1.X): Physical phone over local Wi-Fi
   static String get host {
     if (kIsWeb) return "127.0.0.1";
-    if (Platform.isAndroid) return "10.0.2.2";
+    if (Platform.isAndroid) return "127.0.0.1";
     return "127.0.0.1";
   }
 
@@ -58,6 +58,7 @@ class ApiEndpoints {
   static String get multiplayerStart => "$baseUrl/multiplayer/start";
   static String get multiplayerSubmitAnswer => "$baseUrl/multiplayer/submit-answer";
   static String get multiplayerNextQuestion => "$baseUrl/multiplayer/next-question";
+  static String get multiplayerEndGame => "$baseUrl/multiplayer/end-game";
   static String get multiplayerAnalytics => "$baseUrl/multiplayer/analytics";
   static String get multiplayerParseCsv => "$baseUrl/multiplayer/parse-csv";
   static String get multiplayerWsBase => "ws://$host:8000/api/v1/multiplayer/ws";

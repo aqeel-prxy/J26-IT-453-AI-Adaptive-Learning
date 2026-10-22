@@ -22,6 +22,9 @@ class RoomPlayerSchema(BaseModel):
     is_ready: bool = True
     last_response_time_ms: Optional[int] = None
     predicted_state: Optional[str] = "FOCUSED"  # FOCUSED, FRUSTRATED, BORED, AT_RISK
+    answered_count: Optional[int] = 0
+    progress_percentage: Optional[int] = 0
+    is_completed: Optional[bool] = False
 
 
 class CreateRoomRequest(BaseModel):
@@ -53,6 +56,8 @@ class SubmitAnswerRequest(BaseModel):
     selected_option_index: Optional[int] = 0
     text_answer: Optional[str] = ""
     response_time_ms: int = 5000
+    option_switches: Optional[int] = 0
+    idle_seconds: Optional[float] = 0.0
 
 
 class RoomDetailsResponse(BaseModel):
