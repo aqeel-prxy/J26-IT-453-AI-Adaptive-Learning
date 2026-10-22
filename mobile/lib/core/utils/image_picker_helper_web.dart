@@ -6,7 +6,6 @@ import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../theme/app_theme.dart';
 
 class PickedImageData {
   final String fileName;
@@ -94,10 +93,10 @@ class CameraViewfinder extends StatefulWidget {
   });
 
   @override
-  State<CameraViewfinder> createState() => _CameraViewfinderState();
+  State<CameraViewfinder> createState() => CameraViewfinderState();
 }
 
-class _CameraViewfinderState extends State<CameraViewfinder> {
+class CameraViewfinderState extends State<CameraViewfinder> {
   html.VideoElement? _videoElement;
   html.MediaStream? _mediaStream;
   String? _viewType;
@@ -110,14 +109,21 @@ class _CameraViewfinderState extends State<CameraViewfinder> {
   @override
   void initState() {
     super.initState();
-    _startCamera();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isDisposed) {
+        _startCamera();
+      }
+    });
   }
 
   Future<void> _startCamera() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    if (!mounted || _isDisposed) return;
+    if (!_isLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final mediaDevices = html.window.navigator.mediaDevices;
@@ -176,7 +182,8 @@ class _CameraViewfinderState extends State<CameraViewfinder> {
         ..style.height = '100%'
         ..style.objectFit = 'cover'
         ..style.backgroundColor = '#000000'
-        ..style.border = 'none';
+        ..style.border = 'none'
+        ..style.pointerEvents = 'none';
 
       _videoElement!.srcObject = stream;
 
@@ -189,7 +196,16 @@ class _CameraViewfinderState extends State<CameraViewfinder> {
       // Register platform view for web rendering
       ui_web.platformViewRegistry.registerViewFactory(
         viewId,
-        (int id) => _videoElement!,
+        (int id) {
+          final div = html.DivElement()
+            ..style.width = '100%'
+            ..style.height = '100%'
+            ..style.backgroundColor = '#000000'
+            ..style.overflow = 'hidden'
+            ..style.pointerEvents = 'none';
+          div.append(_videoElement!);
+          return div;
+        },
       );
 
       if (mounted && !_isDisposed) {
@@ -225,6 +241,9 @@ class _CameraViewfinderState extends State<CameraViewfinder> {
       _videoElement = null;
     }
   }
+
+  /// Public method callable via GlobalKey<CameraViewfinderState>
+  Future<void> captureFrame() => _captureFrame();
 
   Future<void> _captureFrame() async {
     if (_videoElement == null || _isCapturing) return;
@@ -281,7 +300,54 @@ class _CameraViewfinderState extends State<CameraViewfinder> {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      return _buildViewfinder(context);
+    } catch (e) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFCA5A5)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 28),
+            const SizedBox(height: 6),
+            Text(
+              'Camera Preview Error',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF991B1B),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$e',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11.5,
+                color: const Color(0xFFB91C1C),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: _startCamera,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildViewfinder(BuildContext context) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(16),
@@ -347,6 +413,16 @@ class _CameraViewfinderState extends State<CameraViewfinder> {
                     ),
                   ),
                 ),
+                if (!_isLoading && _errorMessage == null) ...[
+                  IconButton(
+                    icon: const Icon(Icons.camera_alt, color: Color(0xFF60A5FA), size: 20),
+                    onPressed: _isCapturing ? null : _captureFrame,
+                    tooltip: 'Snap Photo Now',
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 IconButton(
                   icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
                   onPressed: () {
@@ -363,15 +439,30 @@ class _CameraViewfinderState extends State<CameraViewfinder> {
 
           // Viewfinder Viewport
           SizedBox(
+            width: double.infinity,
             height: widget.height,
             child: Stack(
+              fit: StackFit.expand,
+              clipBehavior: Clip.hardEdge,
               children: [
+                // Base background container to guarantee non-positioned size anchor
+                Container(
+                  width: double.infinity,
+                  height: widget.height,
+                  color: const Color(0xFF0F172A),
+                ),
+
                 // 1. Live Video Stream View
                 if (!_isLoading && _errorMessage == null && _viewType != null)
                   Positioned.fill(
-                    child: HtmlElementView(
-                      key: ValueKey(_viewType),
-                      viewType: _viewType!,
+                    child: IgnorePointer(
+                      ignoring: true,
+                      child: SizedBox.expand(
+                        child: HtmlElementView(
+                          key: ValueKey(_viewType),
+                          viewType: _viewType!,
+                        ),
+                      ),
                     ),
                   ),
 
@@ -569,7 +660,52 @@ class _CameraViewfinderState extends State<CameraViewfinder> {
                     ),
                   ),
 
-                // 5. Capturing Overlay
+                // 5. Floating Shutter Button directly inside viewport for high visibility
+                if (!_isLoading && _errorMessage == null && !_isCapturing)
+                  Positioned(
+                    bottom: 12,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: GestureDetector(
+                        onTap: _captureFrame,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2563EB), Color(0xFF4F46E5)],
+                            ),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.45),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                              const SizedBox(width: 7),
+                              Text(
+                                'Capture Question',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 6. Capturing Overlay
                 if (_isCapturing)
                   Positioned.fill(
                     child: Container(
@@ -662,14 +798,27 @@ class CameraCaptureModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final dialogWidth = screenSize.width > 600 ? 560.0 : screenSize.width * 0.94;
-    final viewfinderHeight = screenSize.height < 650 ? 230.0 : 280.0;
+    final dialogWidth = screenSize.width > 620 ? 560.0 : screenSize.width * 0.94;
+    final viewfinderHeight = screenSize.height < 650 ? 250.0 : 310.0;
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: SizedBox(
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Container(
         width: dialogWidth,
+        constraints: const BoxConstraints(maxWidth: 580),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
         child: CameraViewfinder(
           isInline: false,
           height: viewfinderHeight,

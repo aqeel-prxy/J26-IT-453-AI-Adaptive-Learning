@@ -22,7 +22,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
   String? _ocrNoticeMessage;
   String? _solverErrorMessage;
   bool _showWorkingBox = false;
-  bool _isCameraOpen = false;
+
 
   final List<String> _mathSymbols = [
     'x²', 'x³', '√', '±', '×', '÷', '^', '≠', '≤', '≥', 'π', '(', ')', '='
@@ -35,22 +35,16 @@ class _QuestionScreenState extends State<QuestionScreen> {
     super.dispose();
   }
 
-  void _toggleCameraViewfinder() {
+  Future<void> _captureFromCamera() async {
     if (_isOcrLoading || _isSubmitting) return;
-    setState(() {
-      _isCameraOpen = !_isCameraOpen;
-      if (_isCameraOpen) {
-        _ocrErrorMessage = null;
-        _ocrNoticeMessage = null;
-      }
-    });
+    final img = await takePhotoFromCamera(context);
+    if (img != null) {
+      await _processPickedImage(img);
+    }
   }
 
   Future<void> _pickPhotoFromGallery() async {
     if (_isOcrLoading || _isSubmitting) return;
-    if (_isCameraOpen) {
-      setState(() => _isCameraOpen = false);
-    }
     final img = await pickImageFromGallery();
     if (img != null) {
       await _processPickedImage(img);
@@ -333,21 +327,15 @@ class _QuestionScreenState extends State<QuestionScreen> {
                         child: OutlinedButton.icon(
                           onPressed: (_isOcrLoading || _isSubmitting)
                               ? null
-                              : _toggleCameraViewfinder,
-                          icon: Icon(
-                            _isCameraOpen ? Icons.close : Icons.camera_alt_outlined,
-                            size: 18,
-                          ),
-                          label: Text(_isCameraOpen ? 'Close Camera' : 'Capture Camera'),
+                              : _captureFromCamera,
+                          icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                          label: const Text('Capture Camera'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: _isCameraOpen ? const Color(0xFFDC2626) : const Color(0xFF4338CA),
-                            side: BorderSide(
-                              color: _isCameraOpen ? const Color(0xFFF87171) : const Color(0xFF818CF8),
-                              width: _isCameraOpen ? 1.5 : 1.0,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            foregroundColor: const Color(0xFF4338CA),
+                            side: const BorderSide(color: Color(0xFF818CF8)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            backgroundColor: _isCameraOpen ? const Color(0xFFFEF2F2) : const Color(0xFFEEF2FF),
+                            backgroundColor: const Color(0xFFEEF2FF),
                           ),
                         ),
                       ),
@@ -362,7 +350,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.primaryBlue,
                             side: const BorderSide(color: AppTheme.primaryBlue),
-                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             backgroundColor: AppTheme.primaryLight.withValues(alpha: 0.4),
                           ),
@@ -370,27 +358,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
                       ),
                     ],
                   ),
-
-                  // Inline Live Camera Viewfinder
-                  if (_isCameraOpen) ...[
-                    const SizedBox(height: 14),
-                    CameraViewfinder(
-                      isInline: true,
-                      height: 240,
-                      onImageCaptured: (capturedImage) {
-                        setState(() {
-                          _isCameraOpen = false;
-                        });
-                        _processPickedImage(capturedImage);
-                      },
-                      onCancel: () {
-                        setState(() {
-                          _isCameraOpen = false;
-                        });
-                      },
-                    ),
-                  ],
-
                   const SizedBox(height: 14),
 
                   // Image Preview if picked

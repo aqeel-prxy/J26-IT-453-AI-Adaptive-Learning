@@ -28,7 +28,7 @@ Future<PickedImageData?> takePhotoFromCamera(BuildContext context) async {
   return null;
 }
 
-class CameraViewfinder extends StatelessWidget {
+class CameraViewfinder extends StatefulWidget {
   final ValueChanged<PickedImageData> onImageCaptured;
   final VoidCallback onCancel;
   final double height;
@@ -43,9 +43,16 @@ class CameraViewfinder extends StatelessWidget {
   });
 
   @override
+  State<CameraViewfinder> createState() => CameraViewfinderState();
+}
+
+class CameraViewfinderState extends State<CameraViewfinder> {
+  void captureFrame() {}
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      height: height,
+      height: widget.height,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
