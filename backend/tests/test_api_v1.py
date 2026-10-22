@@ -21,6 +21,61 @@ def test_auth_login():
     assert data["token_type"] == "bearer"
 
 
+def test_auth_register_and_relogin():
+    # 1. Register new student
+    reg_resp = client.post(
+        "/api/v1/auth/register",
+        json={
+            "full_name": "Test Student LK",
+            "email": "test.student@school.lk",
+            "password": "mySecurePassword123",
+            "grade_level": 10,
+            "school": "Jaffna Central College",
+            "district": "Northern Province",
+            "preferred_goal": "COMPREHENSIVE",
+            "avatar_id": "owl_scholar"
+        }
+    )
+    assert reg_resp.status_code == 200
+    reg_data = reg_resp.json()
+    assert reg_data["full_name"] == "Test Student LK"
+    assert reg_data["email"] == "test.student@school.lk"
+    assert reg_data["grade_level"] == 10
+    assert reg_data["avatar_id"] == "owl_scholar"
+
+    # 2. Login back with the exact registered credentials — verify persistence!
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        json={"email": "test.student@school.lk", "password": "mySecurePassword123"}
+    )
+    assert login_resp.status_code == 200
+    login_data = login_resp.json()
+    assert login_data["full_name"] == "Test Student LK"
+    assert login_data["email"] == "test.student@school.lk"
+    assert login_data["grade_level"] == 10
+    assert login_data["school"] == "Jaffna Central College"
+    assert login_data["avatar_id"] == "owl_scholar"
+
+
+def test_auth_google():
+    resp = client.post(
+        "/api/v1/auth/google",
+        json={
+            "google_id": "google_uid_123456789",
+            "email": "google.student@gmail.com",
+            "full_name": "Google Scholar Student",
+            "grade_level": 11,
+            "preferred_goal": "TERM_TEST"
+        }
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["auth_provider"] == "google"
+    assert data["email"] == "google.student@gmail.com"
+    assert data["full_name"] == "Google Scholar Student"
+    assert "access_token" in data
+
+
 def test_mathematics_topics():
     response = client.get("/api/v1/mathematics/topics")
     assert response.status_code == 200

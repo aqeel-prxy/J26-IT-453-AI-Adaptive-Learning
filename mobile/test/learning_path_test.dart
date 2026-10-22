@@ -97,4 +97,42 @@ void main() {
     expect(find.text('📖 Theory & Formulas'), findsOneWidget);
     expect(find.text('Zero-Product Rule'), findsOneWidget);
   });
+
+  testWidgets('LessonUnitScreen renders Prerequisite Bridge and pedagogical mode badge', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestWidget(
+      const LessonUnitScreen(
+        conceptId: '10000000-0000-0000-0000-000000000001',
+        goalType: 'TERM_TEST',
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('⚡ Term-Test Cramming'), findsOneWidget);
+    expect(find.text('Prerequisite Bridge (Linking Prior Knowledge)'), findsOneWidget);
+    expect(find.text('Competency 11.1'), findsOneWidget);
+    expect(find.text('Intuitive Analogy'), findsOneWidget);
+    expect(find.text('O/L Exam Trap Warning'), findsOneWidget);
+  });
+
+  testWidgets('LessonUnitScreen dynamically switches pedagogical content when goal button is tapped', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestWidget(
+      const LessonUnitScreen(
+        conceptId: '10000000-0000-0000-0000-000000000001',
+        goalType: 'TERM_TEST',
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Verify initial Term-Test state
+    expect(find.text('⚡ Term-Test Cramming'), findsOneWidget);
+    expect(find.textContaining('EXAM CRAMMING STRATEGY'), findsOneWidget);
+
+    // Tap Comprehensive button
+    await tester.tap(find.text('Comprehensive'));
+    await tester.pumpAndSettle();
+
+    // Verify dynamic re-synthesis to Comprehensive mode!
+    expect(find.text('🎯 Comprehensive Mastery'), findsOneWidget);
+    expect(find.textContaining('CONCEPTUAL FOUNDATION'), findsOneWidget);
+  });
 }

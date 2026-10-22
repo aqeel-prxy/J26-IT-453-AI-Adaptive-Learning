@@ -11,6 +11,8 @@ import '../../features/mathematics/topics_screen.dart';
 import '../../features/mathematics/concept_screen.dart';
 import '../../features/mathematics/question_screen.dart';
 import '../../features/mathematics/answer_submission_screen.dart';
+import '../../features/profile/profile_screen.dart';
+import '../../features/multiplayer/multiplayer_hub_screen.dart';
 import '../../features/learner_profiling/learner_profiling_screen.dart';
 import '../../features/gamification/gamification_hub_screen.dart';
 
@@ -18,6 +20,7 @@ class AppRouter {
   static const String splash = '/';
   static const String login = '/login';
   static const String dashboard = '/dashboard';
+  static const String profile = '/profile';
   static const String learningGoal = '/learning-goal';
   static const String learningPath = '/learning-path';
   static const String diagnostic = '/diagnostic';
@@ -27,6 +30,7 @@ class AppRouter {
   static const String concept = '/concept';
   static const String question = '/question';
   static const String submit = '/submit';
+  static const String multiplayer = '/multiplayer';
   static const String learnerProfiling = '/learner-profiling';
   static const String gamification = '/gamification';
 
@@ -38,6 +42,10 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const LoginScreen());
       case dashboard:
         return MaterialPageRoute(builder: (_) => const DashboardScreen());
+      case profile:
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+      case multiplayer:
+        return MaterialPageRoute(builder: (_) => const MultiplayerHubScreen());
       case learningGoal:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
@@ -51,9 +59,23 @@ class AppRouter {
       case diagnostic:
         return MaterialPageRoute(builder: (_) => const DiagnosticAssessmentScreen());
       case lessonUnit:
-        final conceptId = settings.arguments as String? ?? '10000000-0000-0000-0000-000000000002';
+        String conceptId = '10000000-0000-0000-0000-000000000002';
+        String? goalType;
+        int? gradeLevel;
+        if (settings.arguments is String) {
+          conceptId = settings.arguments as String;
+        } else if (settings.arguments is Map) {
+          final map = settings.arguments as Map;
+          conceptId = map['conceptId'] as String? ?? conceptId;
+          goalType = map['goalType'] as String?;
+          gradeLevel = map['gradeLevel'] as int?;
+        }
         return MaterialPageRoute(
-          builder: (_) => LessonUnitScreen(conceptId: conceptId),
+          builder: (_) => LessonUnitScreen(
+            conceptId: conceptId,
+            goalType: goalType,
+            gradeLevel: gradeLevel,
+          ),
         );
       case telemetry:
         return MaterialPageRoute(builder: (_) => const ResearchTelemetryScreen());

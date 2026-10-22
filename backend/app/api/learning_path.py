@@ -27,6 +27,7 @@ from app.services.learning_path.diagnostic_bank import (
     DIAGNOSTIC_QUESTION_BANK, get_diagnostic_questions_for_topic
 )
 from app.services.learning_path.lesson_bank import get_lesson_for_concept
+from app.services.learning_path.pedagogical_generator import pedagogical_generator
 from app.services.learning_path.readiness_predictor import METRICS_PATH
 from app.schemas.learning_path import (
     PlanCreateRequest, PlanResponse,
@@ -179,21 +180,23 @@ def complete_pathway_activity(
 
 
 @router.get("/lesson/{concept_id}", summary="Get Structured Lesson Unit")
-def get_concept_lesson(concept_id: str):
+def get_concept_lesson(
+    concept_id: str,
+    goal_type: Optional[str] = Query("TERM_TEST"),
+    grade_level: Optional[int] = Query(11)
+):
     """
-    Returns structured curriculum lesson material:
-    theory, formulas, worked example, guided practice with hints, and quiz.
+    Returns dynamically synthesized curriculum lesson material:
+    pedagogical goal differentiation (TERM_TEST vs COMPREHENSIVE),
+    prerequisite bridge, annotated worked example with step rationales,
+    guided practice with multi-tier hints, and concept verification quiz.
+    Strictly aligned with Sri Lankan NIE Competency Descriptors.
     """
-    lesson = get_lesson_for_concept(concept_id)
-    if not lesson:
-        # Fallback to finding node by code or returning first lesson
-        for cid, l in LESSON_BANK.items():
-            if l.get("code") == concept_id:
-                return l
-        # Default to first lesson if not found
-        first_key = list(LESSON_BANK.keys())[0]
-        return LESSON_BANK[first_key]
-    return lesson
+    return pedagogical_generator.synthesize_lesson_unit(
+        concept_id=concept_id,
+        goal_type=goal_type or "TERM_TEST",
+        grade_level=grade_level or 11
+    )
 
 
 @router.get("/baselines/compare", summary="Empirical Baseline Comparison")

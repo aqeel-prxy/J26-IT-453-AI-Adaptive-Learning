@@ -16,6 +16,8 @@ class ApiEndpoints {
 
   // Auth
   static String get login => "$baseUrl/auth/login";
+  static String get register => "$baseUrl/auth/register";
+  static String get googleAuth => "$baseUrl/auth/google";
 
   // Students
   static String get currentStudent => "$baseUrl/students/me";
@@ -42,8 +44,23 @@ class ApiEndpoints {
   // Learner Profiling
   static String get learnerProfile => "$baseUrl/learner/profile";
 
-  // Engagement & Gamification
+  // Engagement & Feedback (Component 3: Dharmasena K.C.D)
+  static String get studentProfile => "$baseUrl/students/profile";
   static String get engagementDashboard => "$baseUrl/engagement/dashboard";
+  static String get engagementFeedback => "$baseUrl/engagement/profile-feedback";
+  static String get engagementEvaluateTelemetry => "$baseUrl/engagement/telemetry/evaluate";
+
+  // Multiplayer Quiz Arena (Component 3)
+  static String get multiplayerCreate => "$baseUrl/multiplayer/create";
+  static String get multiplayerRoom => "$baseUrl/multiplayer/room";
+  static String get multiplayerJoin => "$baseUrl/multiplayer/join";
+  static String get multiplayerAddBot => "$baseUrl/multiplayer/add-bot";
+  static String get multiplayerStart => "$baseUrl/multiplayer/start";
+  static String get multiplayerSubmitAnswer => "$baseUrl/multiplayer/submit-answer";
+  static String get multiplayerNextQuestion => "$baseUrl/multiplayer/next-question";
+  static String get multiplayerAnalytics => "$baseUrl/multiplayer/analytics";
+  static String get multiplayerParseCsv => "$baseUrl/multiplayer/parse-csv";
+  static String get multiplayerWsBase => "ws://$host:8000/api/v1/multiplayer/ws";
 
   // Error Diagnosis
   static String get diagnoseError => "$baseUrl/error/diagnose";

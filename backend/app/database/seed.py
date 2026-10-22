@@ -115,7 +115,12 @@ def seed_database(db: Session):
         anonymized_student_code="STU_HASH_DEMO_01",
         email="student@example.lk",
         hashed_password=hashed_pwd,
-        grade_level=10
+        grade_level=10,
+        full_name="Kavindu Dharmasena",
+        school="Central College, Kandy",
+        district="Central Province",
+        avatar_id="fox_math",
+        preferred_goal="TERM_TEST"
     )
 
     db.add(demo_student)
