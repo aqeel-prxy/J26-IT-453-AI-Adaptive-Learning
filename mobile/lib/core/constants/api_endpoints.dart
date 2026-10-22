@@ -9,7 +9,7 @@ class ApiEndpoints {
   static String get host {
     if (kIsWeb) {
       final browserHost = Uri.base.host;
-      if (browserHost.isNotEmpty && browserHost != 'localhost') {
+      if (browserHost.isNotEmpty) {
         return browserHost;
       }
       return "127.0.0.1";

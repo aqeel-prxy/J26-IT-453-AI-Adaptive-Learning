@@ -1,18 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../constants/api_endpoints.dart';
 
 class ErrorDiagnosisService {
   /// Platform-aware API Base URL
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api/v1';
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000/api/v1';
-    } else {
-      return 'http://127.0.0.1:8000/api/v1';
-    }
-  }
+  static String get baseUrl => ApiEndpoints.baseUrl;
 
   /// 1. Extract mathematical question from image using OCR
   static Future<Map<String, dynamic>> extractQuestionFromOCR(String base64Image) async {

@@ -108,7 +108,8 @@ class MathOCRService:
 
     @classmethod
     def _run_native_ocr(cls, img: Image.Image) -> str:
-        """Invokes Windows Native Media OCR (Windows.Media.Ocr.OcrEngine)."""
+        """Invokes Windows Native Media OCR (via winrt, pytesseract, or native PowerShell WinRT OCR)."""
+        # 1. Try winrt directly if installed
         try:
             from winrt.windows.media.ocr import OcrEngine
             from winrt.windows.storage.streams import DataWriter
@@ -130,9 +131,53 @@ class MathOCRService:
                 return res.text
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(lambda: asyncio.run(_run())).result()
+                result = pool.submit(lambda: asyncio.run(_run())).result()
+                if result and result.strip():
+                    return result.strip()
         except Exception:
-            return ""
+            pass
+
+        # 2. Try pytesseract if tesseract is installed
+        try:
+            import pytesseract
+            import os
+            for candidate in [
+                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe")
+            ]:
+                if os.path.isfile(candidate):
+                    pytesseract.pytesseract.tesseract_cmd = candidate
+                    break
+            text = pytesseract.image_to_string(img)
+            if text and text.strip():
+                return text.strip()
+        except Exception:
+            pass
+
+        # 3. Try native Windows Media OCR via PowerShell script
+        try:
+            import subprocess
+            import tempfile
+            import os
+
+            ps_script = os.path.join(os.path.dirname(__file__), "win_ocr.ps1")
+            if os.path.isfile(ps_script):
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                    tmp_path = tmp.name
+                try:
+                    img.save(tmp_path, format="PNG")
+                    cmd = ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", ps_script, "-ImagePath", tmp_path]
+                    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                    if proc.returncode == 0 and proc.stdout.strip():
+                        return proc.stdout.strip()
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
+        except Exception:
+            pass
+
+        return ""
 
     @classmethod
     def parse_equation_from_ocr_text(cls, raw: str) -> str:
