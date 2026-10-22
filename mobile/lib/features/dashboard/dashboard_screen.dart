@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/routing/app_router.dart';
 import '../learning_path/learning_path_service.dart';
+import '../profile/profile_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -157,10 +158,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // Profile & AI Feedback button (Component 3: Dharmasena K.C.D)
           IconButton(
             tooltip: 'Profile & AI Feedback',
-            icon: const CircleAvatar(
+            icon: CircleAvatar(
               radius: 14,
               backgroundColor: AppTheme.primaryLight,
-              child: Text('🦊', style: TextStyle(fontSize: 15)),
+              child: Text(
+                ProfileService.availableAvatars.firstWhere(
+                  (a) => a.id == ProfileService.cachedProfile.avatarId,
+                  orElse: () => ProfileService.availableAvatars.first,
+                ).emoji,
+                style: const TextStyle(fontSize: 15),
+              ),
             ),
             onPressed: () => Navigator.pushNamed(context, AppRouter.profile).then((_) => _fetchDashboardState()),
           ),

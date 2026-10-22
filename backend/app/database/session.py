@@ -18,6 +18,14 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Ensure database tables exist automatically in development / testing
+try:
+    from app.database.base import Base
+    import app.models  # noqa: F401
+    Base.metadata.create_all(bind=engine)
+except Exception:
+    pass
+
 
 def get_db() -> Generator:
     """Dependency generator providing a database session per request."""
