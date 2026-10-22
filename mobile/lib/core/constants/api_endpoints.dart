@@ -7,7 +7,13 @@ class ApiEndpoints {
   // - 127.0.0.1: Windows / macOS / Linux / Web
   // (If presenting on a physical Android phone over Wi-Fi, change host to your laptop's Wi-Fi IP)
   static String get host {
-    if (kIsWeb) return "127.0.0.1";
+    if (kIsWeb) {
+      final browserHost = Uri.base.host;
+      if (browserHost.isNotEmpty && browserHost != 'localhost') {
+        return browserHost;
+      }
+      return "127.0.0.1";
+    }
     if (Platform.isAndroid) return "10.0.2.2";
     return "127.0.0.1";
   }

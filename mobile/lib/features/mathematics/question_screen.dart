@@ -109,12 +109,14 @@ class _QuestionScreenState extends State<QuestionScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Enter Your Step-by-Step Solution:',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppTheme.textPrimary,
+                Expanded(
+                  child: Text(
+                    'Enter Your Step-by-Step Solution:',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                 ),
                 Text(

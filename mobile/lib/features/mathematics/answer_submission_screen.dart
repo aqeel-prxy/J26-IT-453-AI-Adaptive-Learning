@@ -191,10 +191,14 @@ class _AnswerSubmissionScreenState extends State<AnswerSubmissionScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Input Method: OCR / Multi-Line Algebra',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.textMuted),
+                            Expanded(
+                              child: Text(
+                                'Input Method: OCR / Multi-Line Algebra',
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.textMuted),
+                              ),
                             ),
+                            const SizedBox(width: 8),
                             const Icon(Icons.document_scanner, size: 16, color: AppTheme.primaryBlue),
                           ],
                         ),

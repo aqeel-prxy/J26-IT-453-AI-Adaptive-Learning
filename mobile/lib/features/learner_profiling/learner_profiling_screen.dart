@@ -369,10 +369,14 @@ class _LearnerProfilingScreenState extends State<LearnerProfilingScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              concept,
-              style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600),
+            Expanded(
+              child: Text(
+                concept,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
               '${(mastery * 100).toInt()}%',
               style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: color),
