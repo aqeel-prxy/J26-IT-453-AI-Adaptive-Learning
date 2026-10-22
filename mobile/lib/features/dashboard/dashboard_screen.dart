@@ -50,8 +50,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (mounted) setState(() => _currentNavIndex = 0);
       });
     } else if (index == 4) {
-      Navigator.pushNamed(context, AppRouter.submit).then((_) {
+      Navigator.pushNamed(context, AppRouter.question).then((_) {
         if (mounted) setState(() => _currentNavIndex = 0);
+        _fetchDashboardState();
       });
     } else if (index == 5) {
       Navigator.pushNamed(context, AppRouter.profile).then((_) {
@@ -60,6 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -817,8 +819,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       icon: Icons.fact_check_outlined,
       iconColor: const Color(0xFF0284C7),
       metricPreview: 'Step 3 Transformation Analysis • Sign Inversion Type 2 • Remedial Tip',
-      onPrimaryTap: () => Navigator.pushNamed(context, AppRouter.submit),
-      primaryButtonLabel: 'Diagnose Math Solution',
+      onPrimaryTap: () => Navigator.pushNamed(context, AppRouter.question),
+      primaryButtonLabel: 'Open Problem Solving Workspace',
     );
   }
 
