@@ -86,9 +86,28 @@ class AppRouter {
       case question:
         return MaterialPageRoute(builder: (_) => const QuestionScreen());
       case submit:
-        final solution = settings.arguments as String? ?? '';
+        final args = settings.arguments;
+        String solution = '';
+        String question = 'Custom Problem';
+        String mode = 'solve';
+        Map<String, dynamic>? initialData;
+
+        if (args is Map<String, dynamic>) {
+          solution = args['solution'] as String? ?? '';
+          question = args['question'] as String? ?? 'Custom Problem';
+          mode = args['mode'] as String? ?? 'solve';
+          initialData = args['solveResult'] as Map<String, dynamic>? ??
+              args['checkResult'] as Map<String, dynamic>?;
+        } else if (args is String) {
+          solution = args;
+        }
         return MaterialPageRoute(
-          builder: (_) => AnswerSubmissionScreen(submittedSolution: solution),
+          builder: (_) => AnswerSubmissionScreen(
+            mode: mode,
+            submittedSolution: solution,
+            questionTitle: question,
+            initialData: initialData,
+          ),
         );
       case learnerProfiling:
         return MaterialPageRoute(builder: (_) => const LearnerProfilingScreen());
