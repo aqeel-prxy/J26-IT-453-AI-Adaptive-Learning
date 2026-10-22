@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
 import '../models/multiplayer_models.dart';
@@ -243,7 +241,12 @@ class MultiplayerService {
       return ClassroomAnalytics.fromJson(res);
     } catch (_) {
       final local = _localRooms[pin];
-      final players = local?.players ?? [];
+      final isTeacherRoom = local?.roomType == 'TEACHER_CLASSROOM';
+      final rawPlayers = local?.players ?? [];
+      final studentPlayers = isTeacherRoom
+          ? rawPlayers.where((p) => !p.isHost && !p.name.toLowerCase().contains('(teacher)')).toList()
+          : List<RoomPlayer>.from(rawPlayers);
+      final players = studentPlayers;
       players.sort((a, b) => b.score.compareTo(a.score));
 
       return ClassroomAnalytics(

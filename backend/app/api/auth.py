@@ -58,60 +58,99 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
                 detail="Incorrect password. Please try again."
             )
     else:
-        # For recognized demo accounts, seed on demand with correct demo password check
-        if request.email == "student@example.lk":
+        # Recognized pre-seeded demo accounts
+        demo_accounts = {
+            "student@example.lk": {
+                "id": uuid.UUID(DEMO_STUDENT_ID),
+                "full_name": "Kavindu Dharmasena",
+                "grade_level": 10,
+                "preferred_goal": "TERM_TEST",
+                "avatar_id": "fox_math",
+            },
+            "student2@example.lk": {
+                "id": uuid.UUID("b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22"),
+                "full_name": "Kasun Perera",
+                "grade_level": 10,
+                "preferred_goal": "COMPREHENSIVE",
+                "avatar_id": "owl_scholar",
+            },
+            "kasun@example.lk": {
+                "id": uuid.UUID("b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22"),
+                "full_name": "Kasun Perera",
+                "grade_level": 10,
+                "preferred_goal": "COMPREHENSIVE",
+                "avatar_id": "owl_scholar",
+            },
+            "student3@example.lk": {
+                "id": uuid.UUID("c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33"),
+                "full_name": "Amara Silva",
+                "grade_level": 10,
+                "preferred_goal": "TERM_TEST",
+                "avatar_id": "panda_zen",
+            },
+            "amara@example.lk": {
+                "id": uuid.UUID("c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33"),
+                "full_name": "Amara Silva",
+                "grade_level": 10,
+                "preferred_goal": "TERM_TEST",
+                "avatar_id": "panda_zen",
+            },
+            "teacher@example.lk": {
+                "id": uuid.UUID("d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44"),
+                "full_name": "Mr. Dharmasena (Teacher)",
+                "grade_level": 11,
+                "preferred_goal": "TERM_TEST",
+                "avatar_id": "robot_tech",
+            },
+            "grade10.student@example.lk": {
+                "id": uuid.UUID("b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22"),
+                "full_name": "Kasun Perera",
+                "grade_level": 10,
+                "preferred_goal": "COMPREHENSIVE",
+                "avatar_id": "owl_scholar",
+            },
+        }
+
+        if request.email in demo_accounts:
             if request.password != "password123":
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Incorrect password. Please try again."
+                    detail="Incorrect password. Please use password123."
                 )
-            new_id = uuid.UUID(DEMO_STUDENT_ID)
-            full_name = _STUDENT_PROFILE_STATE.get("full_name") or "Aqeel M.I.M"
-            grade_level = 11
-            preferred_goal = "TERM_TEST"
-            avatar_id = "fox_math"
+            acc_info = demo_accounts[request.email]
             hashed_pwd = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode("utf-8")
-
             student = Student(
-                id=new_id,
-                anonymized_student_code="STU_HASH_DEMO_01",
+                id=acc_info["id"],
+                anonymized_student_code=f"STU_HASH_{str(acc_info['id'])[:8].upper()}",
                 email=request.email,
                 hashed_password=hashed_pwd,
-                grade_level=grade_level,
-                full_name=full_name,
+                grade_level=acc_info["grade_level"],
+                full_name=acc_info["full_name"],
                 school="Central College, Kandy",
                 district="Central Province",
-                avatar_id=avatar_id,
-                preferred_goal=preferred_goal,
+                avatar_id=acc_info["avatar_id"],
+                preferred_goal=acc_info["preferred_goal"],
                 auth_provider="email"
             )
             db.add(student)
             db.commit()
             db.refresh(student)
-        elif request.email == "grade10.student@example.lk":
-            if request.password != "password123":
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Incorrect password. Please try again."
-                )
+        elif len(request.password) >= 6:
+            # Auto-provision on demand for rapid testing across panels
             new_id = uuid.uuid4()
-            full_name = "Kasun Perera"
-            grade_level = 10
-            preferred_goal = "COMPREHENSIVE"
-            avatar_id = "owl_scholar"
-            hashed_pwd = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode("utf-8")
-
+            name_part = request.email.split("@")[0].capitalize()
+            hashed_pwd = bcrypt.hashpw(request.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
             student = Student(
                 id=new_id,
                 anonymized_student_code=f"STU_HASH_{str(new_id)[:8].upper()}",
                 email=request.email,
                 hashed_password=hashed_pwd,
-                grade_level=grade_level,
-                full_name=full_name,
+                grade_level=10,
+                full_name=f"{name_part} (Student)",
                 school="Central College, Kandy",
                 district="Central Province",
-                avatar_id=avatar_id,
-                preferred_goal=preferred_goal,
+                avatar_id="cosmic_star",
+                preferred_goal="TERM_TEST",
                 auth_provider="email"
             )
             db.add(student)
@@ -120,7 +159,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Account not found with this email. Please register first."
+                detail="Account not found. Password must be at least 6 characters."
             )
 
     # 2. Synchronize in-memory profile state for Component 3 compatibility

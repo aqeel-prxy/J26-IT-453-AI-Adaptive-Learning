@@ -11,9 +11,14 @@ class TeacherAnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final top1 = analytics.podium.isNotEmpty ? analytics.podium[0] : null;
-    final top2 = analytics.podium.length > 1 ? analytics.podium[1] : null;
-    final top3 = analytics.podium.length > 2 ? analytics.podium[2] : null;
+    // Exclude host/teacher so only actual student participants and their states are displayed
+    final participants = analytics.allPlayers
+        .where((p) => !p.isHost && !p.name.toLowerCase().contains('(teacher)'))
+        .toList();
+
+    final top1 = participants.isNotEmpty ? participants[0] : null;
+    final top2 = participants.length > 1 ? participants[1] : null;
+    final top3 = participants.length > 2 ? participants[2] : null;
 
     final mlSummary = analytics.mlEngagementSummary;
     final focusedPct = (mlSummary['focused_percentage'] as num?)?.toDouble() ?? 70.0;
@@ -91,7 +96,7 @@ class TeacherAnalyticsScreen extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${analytics.totalStudents} Students',
+                        '${participants.length} Students',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -268,9 +273,9 @@ class TeacherAnalyticsScreen extends StatelessWidget {
               const SizedBox(height: 24),
             ],
 
-            // Full Classroom Leaderboard
+            // Full Classroom Leaderboard (Student Participants Only)
             Text(
-              'ALL PARTICIPANTS (${analytics.allPlayers.length})',
+              'ALL PARTICIPANTS (${participants.length})',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
@@ -285,13 +290,27 @@ class TeacherAnalyticsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: AppTheme.borderLight),
               ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: analytics.allPlayers.length,
-                separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
-                itemBuilder: (context, idx) {
-                  final p = analytics.allPlayers[idx];
+              child: participants.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Center(
+                        child: Text(
+                          'No student participants joined this session.',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: participants.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
+                      itemBuilder: (context, idx) {
+                        final p = participants[idx];
                   return ListTile(
                     leading: CircleAvatar(
                       radius: 16,

@@ -324,9 +324,10 @@ class RoomManager:
         time_per_question: int = 30,
         ml_insights_enabled: bool = True,
         quiz_source: str = "AUTO_GENERATE",
-        custom_questions: Optional[List[Dict[str, Any]]] = None
+        custom_questions: Optional[List[Dict[str, Any]]] = None,
+        forced_pin: Optional[str] = None
     ) -> Dict[str, Any]:
-        pin = cls.generate_unique_pin()
+        pin = forced_pin if forced_pin else cls.generate_unique_pin()
         max_players = 5 if room_type == "STUDENT_PEER" else 50
 
         # Select or generate questions
@@ -373,7 +374,26 @@ class RoomManager:
         return room_data
 
     @classmethod
+    def _ensure_default_room_1000(cls) -> Dict[str, Any]:
+        if "1000" not in cls._rooms:
+            cls.create_room(
+                room_type="TEACHER_CLASSROOM",
+                host_id="teacher_host_01",
+                host_name="Mr. Perera (Teacher)",
+                host_avatar="owl_scholar",
+                topic="Quadratic Equations",
+                grade_level=10,
+                question_count=5,
+                time_per_question=20,
+                ml_insights_enabled=True,
+                forced_pin="1000"
+            )
+        return cls._rooms["1000"]
+
+    @classmethod
     def get_room(cls, pin: str) -> Optional[Dict[str, Any]]:
+        if pin == "1000":
+            return cls._ensure_default_room_1000()
         return cls._rooms.get(pin)
 
     @classmethod
@@ -385,6 +405,8 @@ class RoomManager:
         player_avatar: str = "fox_math",
         is_teacher: bool = False
     ) -> Dict[str, Any]:
+        if pin == "1000":
+            cls._ensure_default_room_1000()
         room = cls._rooms.get(pin)
         if not room:
             raise ValueError(f"Room with PIN {pin} does not exist.")
@@ -497,15 +519,26 @@ class RoomManager:
                     p["correct_count"] += 1
                 p["last_response_time_ms"] = response_time_ms
 
-                # Component 3 Telemetry Affective State Inference
-                if not is_correct and response_time_ms > 20000:
-                    p["predicted_state"] = "FRUSTRATED"
-                elif not is_correct and response_time_ms < 3000:
-                    p["predicted_state"] = "BORED"
-                elif is_correct and response_time_ms < 12000:
-                    p["predicted_state"] = "FOCUSED"
-                else:
-                    p["predicted_state"] = "FOCUSED"
+                # Component 3 Trained ML Affective State Inference (Random Forest)
+                try:
+                    from app.services.engagement.engagement_model import EngagementPredictor
+                    predictor = EngagementPredictor.get_instance()
+                    time_sec = response_time_ms / 1000.0
+                    rapid = 1 if time_sec < 3.5 else 0
+                    correct_int = 1 if is_correct else 0
+                    switches = 2 if not is_correct and time_sec > 15.0 else (0 if is_correct else 1)
+                    idle = max(0.0, time_sec - 3.5) if time_sec > 3.5 else 0.0
+                    ml_eval = predictor.predict(
+                        time_taken_sec=time_sec,
+                        option_switches=switches,
+                        is_rapid_guess=rapid,
+                        is_correct=correct_int,
+                        idle_seconds=idle,
+                        consecutive_errors=0 if is_correct else 2
+                    )
+                    p["predicted_state"] = ml_eval["predicted_state"]
+                except Exception:
+                    p["predicted_state"] = "FOCUSED" if is_correct else ("BORED" if response_time_ms < 3500 else "FRUSTRATED")
 
                 target_player = p
                 break
@@ -572,7 +605,19 @@ class RoomManager:
         if not room:
             raise ValueError("Room not found.")
 
-        players = sorted(room["players"], key=lambda x: x["score"], reverse=True)
+        is_teacher_room = (room.get("room_type") == "TEACHER_CLASSROOM")
+        host_id = room.get("host_id")
+
+        # Exclude host (teacher) from student participants, podium, and ML engagement statistics
+        if is_teacher_room:
+            student_players = [
+                p for p in room["players"]
+                if not p.get("is_host") and p.get("player_id") != host_id and "(Teacher)" not in p.get("name", "")
+            ]
+        else:
+            student_players = list(room["players"])
+
+        players = sorted(student_players, key=lambda x: x["score"], reverse=True)
         total_students = len(players)
         total_questions = len(room["questions"])
 
@@ -581,7 +626,7 @@ class RoomManager:
         total_correct = sum(p["correct_count"] for p in players)
         accuracy_pct = (total_correct / total_possible * 100) if total_possible > 0 else 0
 
-        # Component 3 ML Engagement Summary
+        # Component 3 ML Engagement Summary strictly for student participants
         state_counts = {"FOCUSED": 0, "FRUSTRATED": 0, "BORED": 0, "AT_RISK": 0}
         for p in players:
             st = p.get("predicted_state", "FOCUSED")
@@ -591,10 +636,15 @@ class RoomManager:
         frustrated_pct = round((state_counts["FRUSTRATED"] / total_students * 100), 1) if total_students > 0 else 0
         bored_pct = round((state_counts["BORED"] / total_students * 100), 1) if total_students > 0 else 0
 
-        # Question level analytics
+        # Question level analytics (evaluating student responses)
         question_performance = []
         for q_idx, q in enumerate(room["questions"]):
-            q_answers = room["answers"].get(q_idx, {})
+            raw_answers = room["answers"].get(q_idx, {})
+            # Only count student answers
+            if is_teacher_room:
+                q_answers = {pid: a for pid, a in raw_answers.items() if pid != host_id}
+            else:
+                q_answers = raw_answers
             q_total = len(q_answers)
             q_correct = sum(1 for a in q_answers.values() if a.get("is_correct"))
             q_acc = (q_correct / q_total * 100) if q_total > 0 else 0
