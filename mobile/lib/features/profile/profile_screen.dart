@@ -439,6 +439,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String selectedArchetype = _profile!.motivationalArchetype;
     String selectedGoal = _profile!.preferredGoal;
 
+    const gradeItems = <DropdownMenuItem<int>>[
+      DropdownMenuItem(value: 10, child: Text('Grade 10')),
+      DropdownMenuItem(value: 11, child: Text('Grade 11')),
+    ];
+    if (!gradeItems.any((item) => item.value == selectedGrade)) {
+      selectedGrade = 10;
+    }
+
+    final goalItems = <DropdownMenuItem<String>>[
+      const DropdownMenuItem(value: 'TERM_TEST', child: Text('Term Test')),
+      const DropdownMenuItem(value: 'COMPREHENSIVE', child: Text('Full Mastery')),
+    ];
+    if (!goalItems.any((item) => item.value == selectedGoal)) {
+      if (selectedGoal.isNotEmpty) {
+        goalItems.add(DropdownMenuItem(value: selectedGoal, child: Text(selectedGoal)));
+      } else {
+        selectedGoal = 'TERM_TEST';
+      }
+    }
+
+    final archetypeItems = <DropdownMenuItem<String>>[
+      const DropdownMenuItem(value: 'Mastery Seeker', child: Text('Mastery Seeker (Skill & Mastery)')),
+      const DropdownMenuItem(value: 'Strategic Achiever', child: Text('Strategic Achiever (Milestones & Goals)')),
+      const DropdownMenuItem(value: 'Achiever', child: Text('Achiever (Mastery & Skill)')),
+      const DropdownMenuItem(value: 'Player', child: Text('Player (Rewards & Streaks)')),
+      const DropdownMenuItem(value: 'Free Spirit', child: Text('Free Spirit (Exploration)')),
+      const DropdownMenuItem(value: 'Philanthropist', child: Text('Philanthropist (Social & Purpose)')),
+      const DropdownMenuItem(value: 'Socialiser', child: Text('Socialiser (Community & Collaboration)')),
+      const DropdownMenuItem(value: 'Disruptor', child: Text('Disruptor (Change & Innovation)')),
+    ];
+    if (!archetypeItems.any((item) => item.value == selectedArchetype)) {
+      if (selectedArchetype.isNotEmpty) {
+        archetypeItems.add(DropdownMenuItem(value: selectedArchetype, child: Text(selectedArchetype)));
+      } else {
+        selectedArchetype = 'Mastery Seeker';
+      }
+    }
+
     showDialog(
       context: context,
       builder: (context) {
@@ -566,10 +604,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   decoration: const InputDecoration(
                                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   ),
-                                  items: const [
-                                    DropdownMenuItem(value: 10, child: Text('Grade 10')),
-                                    DropdownMenuItem(value: 11, child: Text('Grade 11')),
-                                  ],
+                                  items: gradeItems,
                                   onChanged: (val) {
                                     if (val != null) setDialogState(() => selectedGrade = val);
                                   },
@@ -596,10 +631,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   decoration: const InputDecoration(
                                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   ),
-                                  items: const [
-                                    DropdownMenuItem(value: 'TERM_TEST', child: Text('Term Test')),
-                                    DropdownMenuItem(value: 'COMPREHENSIVE', child: Text('Full Mastery')),
-                                  ],
+                                  items: goalItems,
                                   onChanged: (val) {
                                     if (val != null) setDialogState(() => selectedGoal = val);
                                   },
@@ -625,12 +657,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: const InputDecoration(
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'Achiever', child: Text('Achiever (Mastery & Skill)')),
-                          DropdownMenuItem(value: 'Player', child: Text('Player (Rewards & Streaks)')),
-                          DropdownMenuItem(value: 'Free Spirit', child: Text('Free Spirit (Exploration)')),
-                          DropdownMenuItem(value: 'Philanthropist', child: Text('Philanthropist (Social)')),
-                        ],
+                        items: archetypeItems,
                         onChanged: (val) {
                           if (val != null) setDialogState(() => selectedArchetype = val);
                         },
