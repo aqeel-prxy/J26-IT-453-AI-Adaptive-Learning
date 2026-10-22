@@ -1,0 +1,56 @@
+{
+  "metrics": {
+    "dataset_rows": 800,
+    "train_rows": 600,
+    "test_rows": 200,
+    "auc_roc": 0.9722,
+    "rmse": 0.2571,
+    "mae": 0.1934,
+    "nfr_auc_satisfied": true,
+    "nfr_rmse_satisfied": true
+  },
+  "concept_parameters": {
+    "MATH-G10-PERIM-01": {
+      "p_l0": 0.4746,
+      "p_slip": 0.0883,
+      "p_guess": 0.1396,
+      "p_transit": 0.15,
+      "mean_latency_ms": 30079.6
+    },
+    "MATH-G10-QUAD-01": {
+      "p_l0": 0.3542,
+      "p_slip": 0.1167,
+      "p_guess": 0.1042,
+      "p_transit": 0.15,
+      "mean_latency_ms": 36083.6
+    },
+    "MATH-G11-IND-01": {
+      "p_l0": 0.6233,
+      "p_slip": 0.0533,
+      "p_guess": 0.1833,
+      "p_transit": 0.15,
+      "mean_latency_ms": 22112.3
+    },
+    "MATH-G11-IND-02": {
+      "p_l0": 0.4675,
+      "p_slip": 0.09,
+      "p_guess": 0.1375,
+      "p_transit": 0.15,
+      "mean_latency_ms": 29970.4
+    },
+    "MATH-G11-LOG-01": {
+      "p_l0": 0.2762,
+      "p_slip": 0.135,
+      "p_guess": 0.1,
+      "p_transit": 0.15,
+      "mean_latency_ms": 37444.9
+    }
+  },
+  "fusion_coefficients": {
+    "mastery_weight": 0.9502,
+    "latency_z_weight": -0.9057,
+    "speed_factor_weight": 0.1174,
+    "hesitation_weight": -9.0366,
+    "intercept": 0.7346
+  }
+}
