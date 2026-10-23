@@ -7,6 +7,7 @@ import '../../features/learning_path/learning_path_screen.dart';
 import '../../features/learning_path/diagnostic_assessment_screen.dart';
 import '../../features/learning_path/lesson_unit_screen.dart';
 import '../../features/learning_path/research_telemetry_screen.dart';
+import '../../features/learner_profile/learner_profile_screen.dart';
 import '../../features/mathematics/topics_screen.dart';
 import '../../features/mathematics/concept_screen.dart';
 import '../../features/mathematics/question_screen.dart';
@@ -21,6 +22,7 @@ class AppRouter {
   static const String diagnostic = '/diagnostic';
   static const String lessonUnit = '/lesson-unit';
   static const String telemetry = '/telemetry';
+  static const String learnerProfile = '/learner-profile';
   static const String topics = '/topics';
   static const String concept = '/concept';
   static const String question = '/question';
@@ -47,6 +49,8 @@ class AppRouter {
         );
       case telemetry:
         return MaterialPageRoute(builder: (_) => const ResearchTelemetryScreen());
+      case learnerProfile:
+        return MaterialPageRoute(builder: (_) => const LearnerProfileScreen());
       case topics:
         return MaterialPageRoute(builder: (_) => const TopicsScreen());
       case concept:
