@@ -71,6 +71,20 @@ def test_telemetry_preprocessor_latency_and_outliers():
     assert abs(z_norm) < 0.1
     assert is_norm_outlier is False
 
+    # Topic-specific normalization: Indices & Logarithms (mean=28s, std=14s)
+    clipped_ind, z_ind, _ = TelemetryPreprocessor.clean_and_normalize_latency(
+        28000, topic_category="Indices and Logarithms"
+    )
+    assert clipped_ind == 28000.0
+    assert abs(z_ind) < 0.01
+
+    # Quadratic Equations (mean=36s, std=18s)
+    clipped_quad, z_quad, _ = TelemetryPreprocessor.clean_and_normalize_latency(
+        36000, topic_category="Quadratic Equations"
+    )
+    assert clipped_quad == 36000.0
+    assert abs(z_quad) < 0.01
+
 
 def test_multimodal_evidence_slip_and_guess():
     """Verifies that behavioral cues isolate slips and guesses."""

@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 
 
 class TelemetryPreprocessor:
@@ -10,17 +10,36 @@ class TelemetryPreprocessor:
     """
 
     # Empirical Grade 10-11 Math problem-solving latency benchmarks (in ms)
-    BENCHMARK_MEAN_LATENCY_MS = 32000.0  # 32 seconds
-    BENCHMARK_STD_LATENCY_MS = 16000.0   # 16 seconds
+    BENCHMARK_MEAN_LATENCY_MS = 32000.0  # 32 seconds default
+    BENCHMARK_STD_LATENCY_MS = 16000.0   # 16 seconds default
     MIN_VALID_LATENCY_MS = 1500.0        # Sub-1.5s implies rapid click/guess
     MAX_VALID_LATENCY_MS = 300000.0      # >5 mins implies idle pause
 
+    # Topic-specific cognitive load baselines for Grade 10-11 Mathematics
+    TOPIC_LATENCY_BENCHMARKS = {
+        "Indices and Logarithms": {"mean_ms": 28000.0, "std_ms": 14000.0},
+        "Quadratic Equations": {"mean_ms": 36000.0, "std_ms": 18000.0},
+        "Perimeter and Area of Plane Figures": {"mean_ms": 40000.0, "std_ms": 20000.0},
+    }
+
     @classmethod
-    def clean_and_normalize_latency(cls, raw_latency_ms: int) -> Tuple[float, float, bool]:
+    def get_topic_benchmark(cls, topic_category: Optional[str] = None) -> Tuple[float, float]:
+        """Resolves topic-specific baseline mean and standard deviation latencies."""
+        if topic_category and topic_category in cls.TOPIC_LATENCY_BENCHMARKS:
+            bench = cls.TOPIC_LATENCY_BENCHMARKS[topic_category]
+            return bench["mean_ms"], bench["std_ms"]
+        return cls.BENCHMARK_MEAN_LATENCY_MS, cls.BENCHMARK_STD_LATENCY_MS
+
+    @classmethod
+    def clean_and_normalize_latency(
+        cls,
+        raw_latency_ms: int,
+        topic_category: Optional[str] = None
+    ) -> Tuple[float, float, bool]:
         """
         Cleans raw latency, handles outlier clipping, and computes:
         1. Log-normalized latency
-        2. Standardized Z-score relative to grade-level norms
+        2. Standardized Z-score relative to grade-level or topic-specific norms
         Returns: (clipped_latency_ms, z_score, is_outlier)
         """
         is_outlier = False
@@ -33,8 +52,10 @@ class TelemetryPreprocessor:
             clipped = cls.MAX_VALID_LATENCY_MS
             is_outlier = True
 
+        mean_ms, std_ms = cls.get_topic_benchmark(topic_category)
+
         # Standardized Z-Score
-        z_score = (clipped - cls.BENCHMARK_MEAN_LATENCY_MS) / cls.BENCHMARK_STD_LATENCY_MS
+        z_score = (clipped - mean_ms) / std_ms
         # Bound z-score to [-3.0, 3.0]
         z_score = max(-3.0, min(3.0, z_score))
 
@@ -47,7 +68,8 @@ class TelemetryPreprocessor:
         response_time_ms: int,
         attempt_number: int = 1,
         hints_used: int = 0,
-        option_switches: int = 0
+        option_switches: int = 0,
+        topic_category: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Fuses multi-modal interaction signals into standardized evidence features.
@@ -58,7 +80,10 @@ class TelemetryPreprocessor:
         - Fast lucky guess: Extremely fast correct on complex question
         - Careless slip: Very fast incorrect on familiar concept
         """
-        clipped_ms, z_score, is_outlier = cls.clean_and_normalize_latency(response_time_ms)
+        clipped_ms, z_score, is_outlier = cls.clean_and_normalize_latency(
+            response_time_ms,
+            topic_category=topic_category
+        )
 
         # Speed factor: 1.0 = normal, >1.0 = faster than average, <1.0 = slower
         # Sigmoid-based speed factor centered at 0
