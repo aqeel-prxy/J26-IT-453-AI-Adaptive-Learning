@@ -1,0 +1,42 @@
+{
+  "status": "trained",
+  "selected_model": "RandomForest",
+  "train_samples": 259,
+  "test_samples": 91,
+  "train_unique_students": 37,
+  "test_unique_students": 13,
+  "feature_columns": [
+    "concept_order_index",
+    "prerequisite_avg_accuracy",
+    "past_overall_accuracy",
+    "recent_attempt_count",
+    "avg_response_time_ms"
+  ],
+  "comparative_metrics": {
+    "LogisticRegression_Baseline": {
+      "accuracy": 0.7033,
+      "precision": 0.8,
+      "recall": 0.8116,
+      "f1_score": 0.8058,
+      "roc_auc": 0.726,
+      "brier_score": 0.1753
+    },
+    "RandomForest": {
+      "accuracy": 0.7473,
+      "precision": 0.8026,
+      "recall": 0.8841,
+      "f1_score": 0.8414,
+      "roc_auc": 0.72,
+      "brier_score": 0.1792
+    },
+    "GradientBoosting": {
+      "accuracy": 0.7473,
+      "precision": 0.8026,
+      "recall": 0.8841,
+      "f1_score": 0.8414,
+      "roc_auc": 0.6489,
+      "brier_score": 0.2094
+    }
+  },
+  "model_path": "C:\\Users\\DELL\\Desktop\\J26-IT-453-AI-Adaptive-Learning\\backend\\app\\services\\learning_path\\artifacts\\readiness_model.pkl"
+}

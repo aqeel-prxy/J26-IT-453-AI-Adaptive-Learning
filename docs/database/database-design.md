@@ -12,16 +12,17 @@ erDiagram
     STUDENTS ||--o{ LEARNER_PROFILES : has
     STUDENTS ||--o{ STUDENT_ENGAGEMENT : tracks
     STUDENTS ||--o{ GAME_SESSIONS : plays
-    STUDENTS ||--o{ REPRESENTATION_OUTCOMES : records
+    STUDENTS ||--o{ LEARNING_PATH_PLANS : follows
+    STUDENTS ||--o{ LEARNING_PATH_DECISIONS : logged_for
     
     CONCEPTS ||--o{ QUESTIONS : contains
-    CONCEPTS ||--o{ REPRESENTATIONS : has
     CONCEPTS ||--o{ LEARNER_PROFILES : evaluates
+    CONCEPTS ||--o{ LEARNING_PATH_DECISIONS : targets
     
     QUESTIONS ||--o{ ATTEMPTS : answered_in
     ATTEMPTS ||--o| ERROR_DIAGNOSIS : diagnoses
     
-    REPRESENTATIONS ||--o{ REPRESENTATION_OUTCOMES : evaluated_by
+    LEARNING_PATH_PLANS ||--o{ LEARNING_PATH_DECISIONS : records
 ```
 
 ---
@@ -118,31 +119,42 @@ erDiagram
 | `corrected_step` | `TEXT` | `NULLABLE` | Suggested step correction |
 | `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Diagnosis timestamp |
 
-#### Table: `representations`
+#### Table: `learning_path_plans`
 *Managed by*: Component 1 (Aqeel)  
-*Purpose*: Stores distinct concept representations (text, diagram, step-by-step, graph).
+*Purpose*: Stores active and historical goal-aware learning pathways for each student.
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Representation identifier |
-| `concept_id` | `UUID` | `FOREIGN KEY (concepts.id)` | Associated concept |
-| `format_type` | `VARCHAR(50)` | `NOT NULL` | Format type (`TEXT`, `DIAGRAM`, `GRAPH`, `STEP_BY_STEP`) |
-| `content_payload` | `JSONB` | `NOT NULL` | Structured representation asset data |
-| `complexity_level` | `FLOAT` | `NOT NULL DEFAULT 0.5` | Representation complexity rating |
-
-#### Table: `representation_outcomes`
-*Managed by*: Component 1 (Aqeel)  
-*Purpose*: Logs student engagement and learning success per representation format for research evaluation.
-
-| Column | Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Outcome record identifier |
+| `id` | `UUID` | `PRIMARY KEY` | Plan unique identifier |
 | `student_id` | `UUID` | `FOREIGN KEY (students.id)` | Student reference |
-| `representation_id` | `UUID` | `FOREIGN KEY (representations.id)` | Presented representation |
-| `duration_seconds` | `INTEGER` | `NOT NULL` | Time student engaged with representation |
-| `is_successful` | `BOOLEAN` | `NOT NULL` | Whether student subsequently solved related question |
-| `switched_from_id` | `UUID` | `NULLABLE` | Prior representation ID if this was a dynamic switch |
+| `topic_category` | `VARCHAR(100)` | `NOT NULL` | Curriculum topic (e.g., "Indices and Logarithms") |
+| `goal_type` | `VARCHAR(50)` | `NOT NULL` | Learning goal (`TERM_TEST`, `COMPREHENSIVE`) |
+| `target_date` | `DATE` | `NULLABLE` | Target exam date for term-test preparation |
+| `available_daily_minutes` | `INTEGER` | `NOT NULL DEFAULT 30` | Daily study time budget |
+| `current_concept_id` | `UUID` | `FOREIGN KEY (concepts.id)` | Currently active or recommended concept |
+| `status` | `VARCHAR(50)` | `NOT NULL DEFAULT 'ACTIVE'` | Plan status (`ACTIVE`, `COMPLETED`, `ARCHIVED`) |
+| `pathway_state` | `JSONB` | `NOT NULL DEFAULT '{}'` | Serialized pathway graph state and node statuses |
+| `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Plan creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Last pathway revision timestamp |
+
+#### Table: `learning_path_decisions`
+*Managed by*: Component 1 (Aqeel)  
+*Purpose*: Logs every planning decision, prerequisite check, ML readiness prediction, and revision rationale for research evaluation.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `UUID` | `PRIMARY KEY` | Decision record identifier |
+| `plan_id` | `UUID` | `FOREIGN KEY (learning_path_plans.id)` | Associated learning pathway plan |
+| `student_id` | `UUID` | `FOREIGN KEY (students.id)` | Student reference |
+| `target_concept_id` | `UUID` | `FOREIGN KEY (concepts.id)` | Target concept evaluated |
+| `decision_type` | `VARCHAR(50)` | `NOT NULL` | Action (`PROCEED_DIRECT`, `REVISE_PREREQUISITE`, `WORKED_EXAMPLE`, `PRACTICE`) |
+| `predicted_readiness` | `FLOAT` | `NULLABLE` | ML predicted readiness probability $P(\text{Readiness})$ |
+| `model_version` | `VARCHAR(50)` | `NOT NULL` | ML model identifier/version used for inference |
+| `rationale` | `TEXT` | `NOT NULL` | Educational explanation for the planning decision |
+| `prerequisite_evidence` | `JSONB` | `DEFAULT '{}'` | Snapshot of prerequisite scores and DAG constraints |
 | `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Log timestamp |
+
+*(Legacy tables `representations` and `representation_outcomes` are preserved non-destructively for backwards compatibility).*
 
 #### Table: `student_engagement`
 *Managed by*: Component 3 (Dharmasena)  

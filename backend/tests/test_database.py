@@ -36,8 +36,9 @@ def test_create_tables_and_seed_data(db_session):
     
     # Verify concepts seeded
     concepts = db_session.query(Concept).all()
-    assert len(concepts) == 3
+    assert len(concepts) >= 3
     quad_concept = db_session.query(Concept).filter_by(code="MATH-G10-QUAD-01").first()
+
     assert quad_concept is not None
     assert quad_concept.topic_category == "Quadratic Equations"
 

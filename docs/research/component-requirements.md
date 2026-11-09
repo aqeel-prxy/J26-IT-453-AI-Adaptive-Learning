@@ -4,20 +4,34 @@ This document details the functional and non-functional requirements for each of
 
 ---
 
-## 1. Component 1: AI-Based Adaptive Mathematics Representation and Visualization
+## 1. Component 1: AI-Based Goal-Aware and Prerequisite-Adaptive Mathematics Learning Path Planning for Grade 11 Students
 **Owner**: Aqeel M.I.M (IT23244016)
 
 ### Functional Requirements
-- **REQ-C1-01 (Representation Repository)**: System shall maintain a collection of distinct representation types (Textual, Diagrammatic, Graphical, Visual Example, Step-by-Step) mapped to Grade 10–11 Math concepts.
-- **REQ-C1-02 (Adaptive Selection)**: System shall evaluate learner mastery, past interaction history, and question metadata to select the optimal initial representation for a concept.
-- **REQ-C1-03 (Dynamic Representation Switching)**: System shall automatically detect repeated incorrect attempts or high response latency on a concept and switch to an alternative representation format.
-- **REQ-C1-04 (Explanation Synchronization)**: System shall ensure mathematical notation, variable definitions, and conceptual rules remain synchronized across representation formats.
-- **REQ-C1-05 (Outcome Tracking)**: System shall log student engagement duration, completion rate, and accuracy following each representation presentation to assess representation efficacy.
-- **REQ-C1-06 (Baseline Comparison Modes)**: System shall support toggling baseline comparison modes (Fixed Representation mode and Simple Rule-Based mode) for experimental evaluation.
+- **REQ-C1-01 (Curriculum Prerequisite Graph)**: System shall maintain a curriculum-grounded Directed Acyclic Graph (DAG) for approved Sri Lankan Grade 11 Mathematics topics (Primary: Indices and Logarithms; Secondary: Graphs), representing explicit prerequisite dependencies between fundamental and advanced concepts.
+- **REQ-C1-02 (Learning Goal Specification)**: System shall enable students to select their study goal:
+  - *Option A: Term-test preparation* (time-bounded, high-yield practice, prioritized focus).
+  - *Option B: Comprehensive learning* (in-depth mastery, prerequisite reinforcement, worked examples, guided practice).
+  The system shall collect target dates and daily available study time in minutes.
+- **REQ-C1-03 (Diagnostic Assessment Ingestion)**: System shall administer topic-specific diagnostic assessments covering target concepts and their essential prerequisites, logging question ID, concept ID, correctness, attempt count, response time, and step-level diagnostics without duplicating shared database models.
+- **REQ-C1-04 (Supervised ML Readiness Prediction)**: System shall evaluate a trained supervised machine-learning model (comparing Logistic Regression baseline, Random Forest, and Gradient Boosting) to estimate concept readiness probability $P(\text{Readiness}) \in [0, 1]$ using features available before the target response (past accuracy, prerequisite performance, response time, attempt history).
+- **REQ-C1-05 (Prerequisite-Aware Path Planning)**: The path planner shall generate an actionable next-step recommendation based on predicted readiness, curriculum constraints, and selected goal:
+  - *Proceed directly*: When readiness is high and prerequisites are satisfied.
+  - *Revise prerequisite*: When readiness on foundational dependency nodes is insufficient.
+  - *Introductory theory / Worked example*: When conceptual grounding is needed before independent problem-solving.
+  - *Guided practice / Reassessment*: When prediction uncertainty or borderline mastery is detected.
+  Essential mathematical prerequisites must never be skipped simply due to student preference for a shorter path.
+- **REQ-C1-06 (Curriculum Content Delivery)**: Each supported learning unit shall deliver textbook-aligned lesson material structured into: concise theory explanation, formulas/rules, step-by-step worked example, guided practice with hints, independent quiz, and answer feedback.
+- **REQ-C1-07 (Dynamic Pathway Revision)**: Upon completion of each activity, quiz, or practice set, the system shall record student evidence, update readiness features, re-evaluate path recommendations, and record revision rationale.
+- **REQ-C1-08 (Evaluation Baselines & Telemetry)**: System shall support experimental comparison against:
+  - *Baseline 1: Fixed Sequence* (static textbook order).
+  - *Baseline 2: Rule-Based Planning* (static diagnostic threshold rules without ML probability estimation).
+  System shall log recommendation rationale, prerequisite traversal decisions, and learning progression metrics for empirical evaluation.
 
 ### Non-Functional Requirements
-- **NFR-C1-01 (Response Time)**: Representation selection API shall return selected payload within < 200 ms.
-- **NFR-C1-02 (Content Integrity)**: Representation assets must render accurately across varied Android screen dimensions (360dp to 600dp width).
+- **NFR-C1-01 (Planning Latency)**: Combined ML inference and path generation shall complete within < 350 ms.
+- **NFR-C1-02 (Prerequisite Constraint Integrity)**: 100% of generated pathways must satisfy prerequisite topological constraints (no concept presented before its hard prerequisites are addressed).
+- **NFR-C1-03 (Reproducible Model Training)**: The ML training pipeline must enforce strict learner-level data splitting to eliminate target leakage and support reproducible model metrics.
 
 ---
 

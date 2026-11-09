@@ -1,76 +1,79 @@
 # Data Flow Specifications — J26-IT-453 Adaptive Learning Platform
 
-This document specifies the data flow sequences across the platform during core student interaction workflows.
+This document specifies the data flow sequences across the platform during core student interaction workflows, reflecting the revised learning path planning architecture.
 
 ---
 
-## 1. End-to-End Learning & Adaptive Feedback Interaction Flow
-
-The following sequence details how student actions flow through the mobile app, backend API, component services, and PostgreSQL database:
+## 1. End-to-End Goal-Aware Learning & Pathway Planning Flow
 
 ```
-Student       Flutter App        FastAPI /api/v1      Component 4      Component 2      Component 1      Component 3      PostgreSQL
-   |               |                   |                  |                |                |                |                |
-   |-- 1. Submit ->|                   |                  |                |                |                |                |
-   |   Answer      |-- 2. POST /attempt|                  |                |                |                |                |
-   |               |   /submit -------->                  |                |                |                |                |
-   |               |                   |-- 3. Save Attempt-------------------------------------------------------------------->|
-   |               |                   |-- 4. Analyze ---->|                |                |                |                |
-   |               |                   |   Solution       |                |                |                |                |
-   |               |                   |<-- 5. Step Error--|                |                |                |                |
-   |               |                   |   Classification |                |                |                |                |
-   |               |                   |-- 6. Update Mastery ------------->|                |                |                |
-   |               |                   |<-- 7. New Mastery Vector ---------|                |                |                |
-   |               |                   |-- 8. Select Representation ----------------------->|                |                |
-   |               |                   |<-- 9. Selected Payload ----------------------------|                |                |
-   |               |                   |-- 10. Process Engagement & Streaks -------------------------------->|                |
-   |               |                   |<-- 11. Feedback & Rewards ------------------------------------------|                |
-   |               |<-- 12. Response --|                  |                |                |                |                |
-   |               |   Payload         |                  |                |                |                |                |
-   |<-- 13. Display|                   |                  |                |                |                |                |
-   |    Adaptive UI|                   |                  |                |                |                |                |
+Student       Flutter App        FastAPI /api/v1      Component 1 (Aqeel)   Component 2       Component 4       Component 3       PostgreSQL
+   |               |                   |                 (Path Planner)      (Profiling)       (Diagnosis)       (Engagement)           |
+   |-- 1. Select ->|                   |                        |                 |                 |                 |                 |
+   |   Goal & Time |-- 2. POST /plan ->|                        |                 |                 |                 |                 |
+   |               |                   |-- 3. Init Path ------->|                 |                 |                 |                 |
+   |               |                   |   Evaluation           |-- 4. Fetch ---->|                 |                 |                 |
+   |               |                   |                        |   Mastery       |                 |                 |                 |
+   |               |                   |                        |<-- 5. Vector ---|                 |                 |                 |
+   |               |                   |                        |-- 6. Prereq DAG Constraints check                   |                 |
+   |               |                   |                        |-- 7. ML Readiness Inference (LogReg/RF/GBDT)        |                 |
+   |               |                   |                        |-- 8. Formulate Recommendation (Direct / Revise)     |                 |
+   |               |                   |<-- 9. Initial Path ----|                 |                 |                 |                 |
+   |               |<-- 10. Render ----|                        |                 |                 |                 |                 |
+   |               |    Pathway UI     |                        |                 |                 |                 |                 |
+   |-- 11. Do Unit>|                   |                        |                 |                 |                 |                 |
+   |   (Quiz/Ex)   |-- 12. POST /submit|                        |                 |                 |                 |                 |
+   |               |    Attempt ------>|-- 13. Save Attempt -------------------------------------------------------------------------->|
+   |               |                   |-- 14. Analyze -------------------------------------------->|                 |                 |
+   |               |                   |<-- 15. Error Classification -------------------------------|                 |                 |
+   |               |                   |-- 16. Update Mastery --------------------->|                                 |                 |
+   |               |                   |<-- 17. Updated Mastery --------------------|                                 |                 |
+   |               |                   |-- 18. Revise Pathway ->|                                                     |                 |
+   |               |                   |<-- 19. Revised Path ---|                                                     |                 |
+   |               |                   |-- 20. Process Streaks & Rewards -------------------------------------------->|                 |
+   |               |                   |<-- 21. Motivational Feedback & Streak Count ---------------------------------|                 |
+   |               |<-- 22. Next Step -|                        |                 |                 |                 |                 |
+   |               |    & Revision UI  |                        |                 |                 |                 |                 |
 ```
 
 ### Detailed Sequence Steps:
-1. **Answer Submission**: The student submits a solution (text steps or image payload) for a specific question via the Flutter application.
-2. **API Endpoint Ingestion**: The Flutter application sends an HTTP POST request to `/api/v1/mathematics/attempts/submit`.
-3. **Attempt Persistence**: The FastAPI backend stores the raw attempt record in the `attempts` table.
-4. **Step Error Diagnosis (Component 4)**: FastAPI delegates the solution string to `ErrorDiagnosisService.analyze_solution()`. The service parses step transitions, identifies step errors, and returns an error classification (e.g., `Conceptual Error`, `Step 2`).
-5. **Learner Profile Update (Component 2)**: FastAPI calls `LearnerProfilingService.update_learner_state()` passing correctness, response time, attempt count, and error type. Component 2 updates the student's mastery vector $P(K_c)$ and memory decay index in `learner_profiles`.
-6. **Adaptive Representation Selection (Component 1)**: FastAPI queries `RepresentationService.select_representation()` with the updated mastery vector. Component 1 selects the most appropriate representation format (e.g., switching from pure algebraic text to a step-by-step diagrammatic representation).
-7. **Engagement & Streak Processing (Component 3)**: FastAPI calls `EngagementService.process_activity_outcome()`. Component 3 checks daily activity goals, updates the student's streak counter, updates virtual pet health, and selects a personalized motivational feedback string.
-8. **Composite Adaptive Response**: FastAPI compiles a unified JSON response containing correctness status, step-by-step error diagnostic feedback, selected concept representation, updated streak counts, and virtual pet updates, returning it to the Flutter mobile app.
+1. **Goal & Time Selection**: The student chooses Grade 11, topic (Indices & Logarithms), study goal (Term-Test Preparation vs. Comprehensive Learning), target exam date, and daily study time.
+2. **Path Generation Request**: The Flutter application calls `POST /api/v1/learning-path/plan`.
+3. **Mastery & Prerequisite Evaluation**: Component 1 checks prerequisite constraints from the curriculum DAG and obtains mastery states from Component 2.
+4. **Supervised ML Readiness Prediction**: The trained readiness model calculates concept success probability $P(\text{Readiness})$ using historical accuracy, prerequisite performance, and response latency.
+5. **Path Recommendation Formulation**: Component 1 determines whether the learner should proceed directly, revise foundational prerequisites, or study worked examples.
+6. **Attempt Submission & Step Error Diagnosis**: As the student submits answers to quizzes/activities, Component 4 diagnoses step errors and Component 2 updates mastery vectors.
+7. **Dynamic Pathway Revision**: Component 1 ingests the new evidence, updates readiness features, and adaptively recalculates the next recommended activity.
+8. **Composite Adaptive Response**: FastAPI returns the revised pathway, error feedback, progressive streak counts, and gamification rewards to the mobile client.
 
 ---
 
 ## 2. Student Diagnostic Assessment & Onboarding Flow
 
 ```
-Student       Flutter App        FastAPI /api/v1      Component 2      PostgreSQL
-   |               |                   |                  |                |
-   |-- 1. Start -->|                   |                  |                |
-   |   Diagnostic  |-- 2. GET /learner |                  |                |
-   |               |   /diagnostic --->|                  |                |
-   |               |                   |-- 3. Generate -->|                |
-   |               |                   |   Diagnostic Set |                |
-   |               |                   |<-- 4. QuestionSet|                |
-   |               |<-- 5. Diagnostic -|                  |                |
-   |               |    Questions      |                  |                |
-   |-- 6. Submit ->|                   |                  |                |
-   |   Answers     |-- 7. POST /learner|                  |                |
-   |               |   /diagnostic --->|                  |                |
-   |               |                   |-- 8. Compute Baseline Mastery --->|
-   |               |                   |-- 9. Persist Baseline Profile --->|
-   |<-- 10. Dashboard                  |                  |                |
-   |    with Initial Mastery State     |                  |                |
+Student       Flutter App        FastAPI /api/v1      Component 1      Component 2      PostgreSQL
+   |               |                   |                 (Planner)        (Profiling)           |
+   |-- 1. Select ->|                   |                     |                 |                |
+   |   Topic       |-- 2. GET /diag -->|                     |                 |                |
+   |               |                   |-- 3. Fetch Diag --->|                 |                |
+   |               |                   |   Questions (DAG)   |                 |                |
+   |               |<-- 4. Questions --|                     |                 |                |
+   |-- 5. Submit ->|                   |                     |                 |                |
+   |   Answers     |-- 6. POST /diag ->|                     |                 |                |
+   |               |   /submit         |-- 7. Process Evidence                |                |
+   |               |                   |-- 8. Compute Baseline Mastery ------->|                |
+   |               |                   |-- 9. Infer Initial Readiness -------->|                |
+   |               |                   |<-- 10. Return Pathway Decision                         |
+   |<-- 11. Initial Pathway Display ---|                                                        |
 ```
 
 ---
 
-## 3. Representation Switching & Outcome Recording Flow
+## 3. Dynamic Pathway Revision & Prerequisite Remediation Flow
 
-When a student continues to struggle with a concept representation:
-1. The student submits consecutive incorrect attempts or exhibits extended latency on a representation.
-2. `RepresentationService` detects representation failure and issues a `switch_representation` payload.
-3. The Flutter application transitions to the new representation layout.
-4. The system logs the outcome (completion time, post-switch accuracy) in the `representation_outcomes` table to evaluate representation switch efficacy for Component 1 research.
+When a student struggles with a concept or fails a verification quiz:
+1. Student submits an incorrect quiz attempt or displays low readiness on dependent concepts.
+2. `LearningPathPlanner` checks the prerequisite DAG for unmastered parent nodes.
+3. If an essential prerequisite has a readiness score below threshold, the planner issues a **Prerequisite Revision Directive**.
+4. The system updates the recommended next activity to target the foundational concept, locking advance progression until prerequisite competence is demonstrated.
+5. All planning decisions, prerequisite checks, and model readiness probabilities are logged to support research evaluation comparing the proposed method against Fixed Sequence (Baseline 1) and Static Rule-Based (Baseline 2) approaches.
