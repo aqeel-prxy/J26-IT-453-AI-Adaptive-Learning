@@ -311,3 +311,16 @@ def test_api_latency_under_150ms():
 
     avg_latency = sum(latencies) / len(latencies)
     assert avg_latency < 150.0, f"Average latency {avg_latency:.2f}ms exceeded 150ms threshold."
+
+
+def test_simulate_retention_curve():
+    """Verifies that simulate_retention_curve computes monotonic temporal decay projections."""
+    curve = LearnerMasteryModel.simulate_retention_curve(
+        current_mastery=0.85,
+        stability_factor=1.2,
+        projection_days=[1, 3, 7, 14, 30]
+    )
+    assert len(curve) == 5
+    assert curve[1] > curve[7] > curve[30]
+    assert curve[1] <= 0.85
+    assert curve[30] >= 0.05

@@ -417,6 +417,33 @@ class LearnerMasteryModel:
         }
 
     @classmethod
+    def simulate_retention_curve(
+        cls,
+        current_mastery: float,
+        stability_factor: float = 1.0,
+        projection_days: Optional[List[int]] = None
+    ) -> Dict[int, float]:
+        """
+        Simulates multi-horizon retention curve for a given mastery and stability factor.
+        Useful for cognitive retention forecasting and spaced revision scheduling.
+        """
+        if projection_days is None:
+            projection_days = [1, 3, 7, 14, 30]
+
+        now = datetime.now(timezone.utc)
+        projections: Dict[int, float] = {}
+        for day in projection_days:
+            target_time = now + timedelta(days=day)
+            decayed = cls.calculate_temporal_decay(
+                mastery=current_mastery,
+                last_practiced_at=now,
+                stability_factor=stability_factor,
+                current_time=target_time
+            )
+            projections[day] = decayed
+        return projections
+
+    @classmethod
     def get_retention_forecast(
         cls,
         db: Session,
@@ -424,24 +451,25 @@ class LearnerMasteryModel:
     ) -> List[Dict[str, Any]]:
         """Forecasts concept retention after 1, 7, and 30 days of inactivity."""
         profiles = db.query(LearnerProfile).filter_by(student_id=student_id).all()
-        now = datetime.now(timezone.utc)
         forecast_list = []
 
         for p in profiles:
             concept = db.query(Concept).filter_by(id=p.concept_id).first()
             c_code = concept.code if concept else "MATH-CONCEPT"
 
-            m1 = cls.calculate_temporal_decay(p.mastery_probability, now, p.stability_factor, now + timedelta(days=1))
-            m7 = cls.calculate_temporal_decay(p.mastery_probability, now, p.stability_factor, now + timedelta(days=7))
-            m30 = cls.calculate_temporal_decay(p.mastery_probability, now, p.stability_factor, now + timedelta(days=30))
+            curve = cls.simulate_retention_curve(
+                current_mastery=p.mastery_probability,
+                stability_factor=p.stability_factor,
+                projection_days=[1, 7, 30]
+            )
 
             forecast_list.append({
                 "concept_id": p.concept_id,
                 "concept_code": c_code,
                 "current_mastery": p.mastery_probability,
-                "projected_mastery_1d": m1,
-                "projected_mastery_7d": m7,
-                "projected_mastery_30d": m30
+                "projected_mastery_1d": curve[1],
+                "projected_mastery_7d": curve[7],
+                "projected_mastery_30d": curve[30]
             })
 
         return forecast_list
