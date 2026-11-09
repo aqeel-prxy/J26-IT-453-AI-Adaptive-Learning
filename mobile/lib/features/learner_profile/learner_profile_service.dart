@@ -102,6 +102,44 @@ class LearnerProfileService {
     ];
   }
 
+  /// Fetches multi-day retention decay forecast (1d, 7d, 30d).
+  Future<List<Map<String, dynamic>>> getRetentionForecast([String? studentId]) async {
+    final sId = studentId ?? _demoStudentId;
+    final url = Uri.parse("${ApiEndpoints.learnerProfile}/$sId/retention-forecast");
+
+    try {
+      final response = await http.get(url).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data["forecast"] ?? []);
+      }
+    } catch (_) {}
+
+    return [
+      {
+        "concept_code": "MATH-G11-IND-01",
+        "current_mastery": 0.85,
+        "projected_mastery_1d": 0.82,
+        "projected_mastery_7d": 0.74,
+        "projected_mastery_30d": 0.52
+      },
+      {
+        "concept_code": "MATH-G11-IND-02",
+        "current_mastery": 0.62,
+        "projected_mastery_1d": 0.58,
+        "projected_mastery_7d": 0.49,
+        "projected_mastery_30d": 0.31
+      },
+      {
+        "concept_code": "MATH-G11-LOG-01",
+        "current_mastery": 0.38,
+        "projected_mastery_1d": 0.35,
+        "projected_mastery_7d": 0.28,
+        "projected_mastery_30d": 0.16
+      }
+    ];
+  }
+
   /// Returns trained model metadata, dataset specifications, and empirical calibration metrics.
   Map<String, dynamic> getModelTrainingDetails() {
     return {

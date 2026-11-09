@@ -17,6 +17,7 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> with Single
   bool _isLoading = true;
   Map<String, dynamic>? _profileData;
   List<Map<String, dynamic>> _weakConcepts = [];
+  List<Map<String, dynamic>> _retentionForecast = [];
   late Map<String, dynamic> _trainingDetails;
 
   @override
@@ -30,10 +31,12 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> with Single
   Future<void> _loadProfile() async {
     final profile = await _service.getLearnerProfile();
     final weak = await _service.getWeakConcepts();
+    final forecast = await _service.getRetentionForecast();
     if (mounted) {
       setState(() {
         _profileData = profile;
         _weakConcepts = weak;
+        _retentionForecast = forecast;
         _isLoading = false;
       });
     }
@@ -342,6 +345,16 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> with Single
   }
 
   Widget _buildRetentionForecastCard() {
+    final f1 = (_retentionForecast.isNotEmpty && _retentionForecast[0]['projected_mastery_1d'] != null)
+        ? '${((_retentionForecast[0]['projected_mastery_1d'] as num) * 100).toInt()}% Retained'
+        : '92% Retained';
+    final f7 = (_retentionForecast.isNotEmpty && _retentionForecast[0]['projected_mastery_7d'] != null)
+        ? '${((_retentionForecast[0]['projected_mastery_7d'] as num) * 100).toInt()}% Retained'
+        : '74% Retained';
+    final f30 = (_retentionForecast.isNotEmpty && _retentionForecast[0]['projected_mastery_30d'] != null)
+        ? '${((_retentionForecast[0]['projected_mastery_30d'] as num) * 100).toInt()}% (Revision Due)'
+        : '48% (Revision Due)';
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -371,9 +384,9 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> with Single
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildForecastPill('1 Day Gap', '92% Retained', AppTheme.successGreen),
-              _buildForecastPill('7 Day Gap', '74% Retained', AppTheme.primaryBlue),
-              _buildForecastPill('30 Day Gap', '48% (Revision Due)', AppTheme.warningAmber),
+              _buildForecastPill('1 Day Gap', f1, AppTheme.successGreen),
+              _buildForecastPill('7 Day Gap', f7, AppTheme.primaryBlue),
+              _buildForecastPill('30 Day Gap', f30, AppTheme.warningAmber),
             ],
           ),
         ],
